@@ -54,7 +54,7 @@ fromList : (ls : List a) -> Array a
 fromList ls = A _ $ array ls
 
 export %inline
-generate : (n : Nat) -> ((m : Nat) -> {auto 0 lt : LT m n} -> a) -> Array a
+generate : (n : Nat) -> (Fin n -> a) -> Array a
 generate n f = A n $ generate n f
 
 export %inline

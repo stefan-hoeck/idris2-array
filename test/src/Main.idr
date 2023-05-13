@@ -3,12 +3,12 @@ module Main
 import Data.Array
 import Hedgehog
 
-arrayOf : Gen a -> Gen (n ** Array n a)
-arrayOf g = (\vs => (_ ** array vs)) <$> list (linear 0 10) g
+arrayOf : Gen a -> Gen (Array a)
+arrayOf g = fromList <$> list (linear 0 10) g
 
 prop_eq_refl : Property
 prop_eq_refl = property $ do
-  (_ ** vs) <- forAll (arrayOf anyBits32)
+  vs <- forAll (arrayOf anyBits32)
   vs === vs
 
 main : IO ()

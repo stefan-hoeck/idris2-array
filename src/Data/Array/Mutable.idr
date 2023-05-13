@@ -16,26 +16,26 @@ setAtSuffix :
   -> a
   -> MArray (length ys) a
   -@ MArray (length ys) a
-setAtSuffix s = set (suffixToNat s) @{suffixLT s}
+setAtSuffix s = set (suffixToFin s)
 
 export %inline
 setIx : (0 m : Nat) -> {auto x : Ix (S m) n} -> a -> MArray n a -@ MArray n a
-setIx _ = set (ixToNat x) @{ixLT x}
+setIx _ = set (ixToFin x)
 
 export %inline
-setFin : Fin n -> a -> MArray n a -@ MArray n a
-setFin x = set (finToNat x) @{finLT x}
+setNat : (m : Nat) -> {auto 0 lt : LT m n} -> a -> MArray n a -@ MArray n a
+setNat x = set (natToFinLT x)
 
 export %inline
 getIx : (0 m : Nat) -> {auto x : Ix (S m) n} -> MArray n a -@ Res a (const $ MArray n a)
-getIx _ = get (ixToNat x) @{ixLT x}
+getIx _ = get (ixToFin x)
 
 export %inline
-getFin : Fin n -> MArray n a -@ Res a (const $ MArray n a)
-getFin x = get (finToNat x) @{finLT x}
+getNat : (m : Nat) -> {auto 0 lt : LT m n} -> MArray n a -@ Res a (const $ MArray n a)
+getNat x = get (natToFinLT x)
 
 export
-modify : (m : Nat) -> {auto 0 p : LT m n} -> (a -> a) -> MArray n a -@ MArray n a
+modify : Fin n -> (a -> a) -> MArray n a -@ MArray n a
 modify m f arr = let v # arr1 := get m arr in set m (f v) arr1
 
 export %inline
@@ -45,11 +45,11 @@ modifyIx :
   -> (a -> a)
   -> MArray n a
   -@ MArray n a
-modifyIx _ = modify (ixToNat x) @{ixLT x}
+modifyIx _ = modify (ixToFin x)
 
 export %inline
-modifyFin : Fin n -> (a -> a) -> MArray n a -@ MArray n a
-modifyFin x = modify (finToNat x) @{finLT x}
+modifyNat : (m : Nat) -> {auto 0 lt : LT m n} -> (a -> a) -> MArray n a -@ MArray n a
+modifyNat m = modify (natToFinLT m)
 
 --------------------------------------------------------------------------------
 --          Allocating Arrays
@@ -75,21 +75,22 @@ allocList (x::xs) f = alloc (S $ length xs) x (fromL {xs = x::xs} xs f)
 gen :
      (m : Nat)
   -> {auto 0 lte : LTE m n}
-  -> ((k : Nat) -> {auto 0 lt : LT k n} -> a)
+  -> (Fin n -> a)
   -> (MArray n a -@ !* b)
   -@ MArray n a
   -@ !* b
 gen 0     f g arr = g arr
-gen (S k) f g arr = let arr' := set k (f k) arr in gen k f g arr'
+gen (S k) f g arr =
+  let arr' := setNat k (f $ natToFinLT k) arr in gen k f g arr'
 
 export
 allocGen :
      (n : Nat)
   -> {auto 0 p : IsSucc n}
-  -> ((k : Nat) -> {auto 0 lt : LT k n} -> a)
+  -> (Fin n -> a)
   -> (MArray n a -@ !* b)
   -@ !* b
-allocGen (S k) f g = alloc (S k) (f k) (gen k f g)
+allocGen (S k) f g = alloc (S k) (f last) (gen k f g)
 
 iter :
      (m : Nat)

@@ -1,7 +1,8 @@
 module Data.Array.Core
 
 import public Data.Linear
-import Data.Nat
+import public Data.Fin
+import public Data.Nat
 
 %default total
 
@@ -34,8 +35,8 @@ record IArray (n : Nat) (a : Type) where
   arr : ArrayData a
 
 export
-at : IArray n a -> (m : Nat) -> {auto 0 lt : LT m n} -> a
-at (IA ad) m = prim__arrayGet ad (cast m) %MkWorld
+at : IArray n a -> Fin n -> a
+at (IA ad) m = prim__arrayGet ad (cast $ finToNat m) %MkWorld
 
 --------------------------------------------------------------------------------
 --          Mutable Arrays
@@ -51,12 +52,12 @@ alloc : (n : Nat) -> a -> (MArray n a -@ !* b) -@ !* b
 alloc n v f = f (MA $ prim__newArray (cast n) v %MkWorld)
 
 export
-set : (m : Nat) -> {auto 0 p : LT m n} -> a -> MArray n a -@ MArray n a
-set m x (MA arr) = MA $ set' m x arr
+set : Fin n -> a -> MArray n a -@ MArray n a
+set m x (MA arr) = MA $ set' (finToNat m) x arr
 
 export
-get : (m : Nat) -> {auto 0 p : LT m n} -> MArray n a -@ Res a (const $ MArray n a)
-get m (MA arr) = prim__arrayGet arr (cast m) %MkWorld # MA arr
+get : Fin n -> MArray n a -@ Res a (const $ MArray n a)
+get m (MA arr) = prim__arrayGet arr (cast $ finToNat m) %MkWorld # MA arr
 
 export
 freeze : MArray n a -@ !* IArray n a
