@@ -81,3 +81,15 @@ refl = reflexive
 export %hint
 0 lsl : (p : LTE (S m) n) => LTE m n
 lsl = lteSuccLeft p
+
+--------------------------------------------------------------------------------
+--          Proofs
+--------------------------------------------------------------------------------
+
+
+public export
+0 lteOpReflectsLTE : (m,n : Nat) -> (m <= n) === True -> LTE m n
+lteOpReflectsLTE 0     (S k) prf = LTEZero
+lteOpReflectsLTE (S k) (S j) prf = LTESucc (lteOpReflectsLTE k j prf)
+lteOpReflectsLTE 0 0         prf = LTEZero
+lteOpReflectsLTE (S k) 0     prf impossible

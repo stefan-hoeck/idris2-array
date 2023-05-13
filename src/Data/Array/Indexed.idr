@@ -40,6 +40,10 @@ iterate : (n : Nat) -> (a -> a) -> a -> IArray n a
 iterate 0     _ _ = empty
 iterate (S k) f v = unrestricted $ allocIter (S k) f v freeze
 
+export
+force : {n : _} -> IArray n a -> IArray n a
+force arr = generate n (at arr)
+
 --------------------------------------------------------------------------------
 --          Eq and Ord
 --------------------------------------------------------------------------------
@@ -115,3 +119,7 @@ export %inline
 export
 {n : Nat} -> Show a => Show (IArray n a) where
   showPrec p arr = showCon p "array" (showArg $ ontoList [] n arr)
+
+--------------------------------------------------------------------------------
+--          Subarrays
+--------------------------------------------------------------------------------
