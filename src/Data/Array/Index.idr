@@ -5,10 +5,16 @@ import public Data.Nat
 
 %default total
 
+export
 0 ltLemma : (0 k,m,n : Nat) -> k + S m === n -> LT k n
 ltLemma 0     m (S m) Refl = %search
 ltLemma (S k) m (S n) prf  = LTESucc $ ltLemma k m n (injective prf)
 ltLemma (S k) m 0     prf  = absurd prf
+
+export
+0 lteSuccPlus : (k : Nat) -> LTE (S k) (k + S m)
+lteSuccPlus 0     = LTESucc LTEZero
+lteSuccPlus (S k) = LTESucc $ lteSuccPlus k
 
 --------------------------------------------------------------------------------
 --          Suffix
@@ -33,6 +39,10 @@ export
 0 suffixLT : (s : Suffix (x::xs) ys) -> LT (suffixToNat s) (length ys)
 suffixLT s = ltLemma _ _ _ $ suffixLemma s
 
+public export
+suffixToFin : Suffix (x::xs) ys -> Fin (length ys)
+suffixToFin x = natToFinLT (suffixToNat x) @{suffixLT x}
+
 --------------------------------------------------------------------------------
 --          Ix
 --------------------------------------------------------------------------------
@@ -56,14 +66,9 @@ export
 0 ixLT : (x : Ix (S m) n) -> LT (ixToNat x) n
 ixLT s = ltLemma _ _ _ $ ixLemma s
 
---------------------------------------------------------------------------------
---          Fin
---------------------------------------------------------------------------------
-
-export
-0 finLT : (x : Fin n) -> LT (finToNat x) n
-finLT FZ     = %search
-finLT (FS x) = LTESucc $ finLT x
+public export
+ixToFin : Ix (S m) n -> Fin n
+ixToFin x = natToFinLT (ixToNat x) @{ixLT x}
 
 --------------------------------------------------------------------------------
 --          Hints
