@@ -38,6 +38,10 @@ export
 at : IArray n a -> Fin n -> a
 at (IA ad) m = prim__arrayGet ad (cast $ finToNat m) %MkWorld
 
+export
+take : (0 m : Nat) -> IArray n a -> {auto 0 lte : LTE m n} -> IArray m a
+take _ (IA arr) = IA arr
+
 --------------------------------------------------------------------------------
 --          Mutable Arrays
 --------------------------------------------------------------------------------

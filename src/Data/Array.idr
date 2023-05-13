@@ -60,3 +60,18 @@ generate n f = A n $ generate n f
 export %inline
 iterate : (n : Nat) -> (a -> a) -> a -> Array a
 iterate n f x = A n $ iterate n f x
+
+export %inline
+force : Array a -> Array a
+force (A s arr) = A s $ force arr
+
+--------------------------------------------------------------------------------
+--          Subarrays
+--------------------------------------------------------------------------------
+
+export %inline
+take : Nat -> Array a -> Array a
+take k (A size arr) with (k <= size) proof eq
+  _ | True  = A k $ take k arr @{lteOpReflectsLTE _ _ eq}
+  _ | False = A size arr
+
