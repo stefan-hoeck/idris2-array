@@ -1,0 +1,5 @@
+[custom.all.array]
+type   = "local"
+path   = "."
+ipkg   = "array.ipkg"
+test   = "test/test.ipkg"

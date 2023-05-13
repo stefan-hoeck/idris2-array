@@ -1,0 +1,15 @@
+package array
+version    = 0.0.1
+authors    = "Stefan Höck"
+depends    = base    >= 0.6.0
+           , linear
+
+brief      = "Immutable and mutable (linear) size-indexed arrays"
+
+modules    = Data.Array.Core
+           , Data.Array.Index
+           , Data.Array.Indexed
+           , Data.Array.Mutable
+           , Data.Array
+
+sourcedir  = "src"
