@@ -29,23 +29,17 @@ set' m y z =
 --------------------------------------------------------------------------------
 
 export
-record Array (n : Nat) (a : Type) where
-  constructor A
+record IArray (n : Nat) (a : Type) where
+  constructor IA
   arr : ArrayData a
 
 export
-at : Array n a -> (m : Nat) -> {auto 0 lt : LT m n} -> a
-at (A ad) m = prim__arrayGet ad (cast m) %MkWorld
+at : IArray n a -> (m : Nat) -> {auto 0 lt : LT m n} -> a
+at (IA ad) m = prim__arrayGet ad (cast m) %MkWorld
 
 --------------------------------------------------------------------------------
 --          Mutable Arrays
 --------------------------------------------------------------------------------
-
-public export
-record P1 a b where
-  constructor (#)
-  fst   : a
-  1 snd : b
 
 export
 record MArray (n : Nat) (a : Type) where
@@ -61,9 +55,9 @@ set : (m : Nat) -> {auto 0 p : LT m n} -> a -> MArray n a -@ MArray n a
 set m x (MA arr) = MA $ set' m x arr
 
 export
-get : (m : Nat) -> {auto 0 p : LT m n} -> MArray n a -@ P1 a (MArray n a)
+get : (m : Nat) -> {auto 0 p : LT m n} -> MArray n a -@ Res a (const $ MArray n a)
 get m (MA arr) = prim__arrayGet arr (cast m) %MkWorld # MA arr
 
 export
-freeze : MArray n a -@ !* Array n a
-freeze (MA arr) = MkBang $ A arr
+freeze : MArray n a -@ !* IArray n a
+freeze (MA arr) = MkBang $ IA arr

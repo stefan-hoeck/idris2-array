@@ -27,11 +27,11 @@ setFin : Fin n -> a -> MArray n a -@ MArray n a
 setFin x = set (finToNat x) @{finLT x}
 
 export %inline
-getIx : (0 m : Nat) -> {auto x : Ix (S m) n} -> MArray n a -@ P1 a (MArray n a)
+getIx : (0 m : Nat) -> {auto x : Ix (S m) n} -> MArray n a -@ Res a (const $ MArray n a)
 getIx _ = get (ixToNat x) @{ixLT x}
 
 export %inline
-getFin : Fin n -> MArray n a -@ P1 a (MArray n a)
+getFin : Fin n -> MArray n a -@ Res a (const $ MArray n a)
 getFin x = get (finToNat x) @{finLT x}
 
 export

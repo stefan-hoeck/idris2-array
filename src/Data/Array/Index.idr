@@ -5,10 +5,16 @@ import public Data.Nat
 
 %default total
 
+export
 0 ltLemma : (0 k,m,n : Nat) -> k + S m === n -> LT k n
 ltLemma 0     m (S m) Refl = %search
 ltLemma (S k) m (S n) prf  = LTESucc $ ltLemma k m n (injective prf)
 ltLemma (S k) m 0     prf  = absurd prf
+
+export
+0 lteSuccPlus : (k : Nat) -> LTE (S k) (k + S m)
+lteSuccPlus 0     = LTESucc LTEZero
+lteSuccPlus (S k) = LTESucc $ lteSuccPlus k
 
 --------------------------------------------------------------------------------
 --          Suffix
