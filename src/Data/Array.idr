@@ -75,3 +75,10 @@ take k (A size arr) with (k <= size) proof eq
   _ | True  = A k $ take k arr @{lteOpReflectsLTE _ _ eq}
   _ | False = A size arr
 
+export %inline
+filter : (a -> Bool) -> Array a -> Array a
+filter f (A size arr) = let (m ** a2) := filter f arr in A m a2
+
+export %inline
+mapMaybe : (a -> Maybe b) -> Array a -> Array b
+mapMaybe f (A size arr) = let (m ** a2) := mapMaybe f arr in A m a2

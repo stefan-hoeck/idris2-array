@@ -123,3 +123,47 @@ export
 --------------------------------------------------------------------------------
 --          Subarrays
 --------------------------------------------------------------------------------
+
+0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
+curLTE s lte = transitive lte $ ixLTE s
+
+0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
+curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
+
+export
+filter : {n : Nat} -> (a -> Bool) -> IArray n a -> (m ** IArray m a)
+filter f arr = unrestricted $ unsafeAlloc n (go 0 n)
+  where
+    go :
+         (cur,x : Nat)
+      -> {auto s : Ix x n}
+      -> {auto 0 lte : LTE cur $ ixToNat s}
+      -> MArray n a
+      -@ !* (m ** IArray m a)
+    go cur 0     marr =
+      let MkBang res := freezeLTE cur @{curLTE s lte} marr
+       in MkBang (cur ** res)
+    go cur (S j) marr = case f (ix arr j) of
+      True  =>
+        let marr2 := setNat cur @{curLT s lte} (ix arr j) marr
+         in go (S cur) j marr2
+      False => go cur j marr
+
+export
+mapMaybe : {n : Nat} -> (a -> Maybe b) -> IArray n a -> (m ** IArray m b)
+mapMaybe f arr = unrestricted $ unsafeAlloc n (go 0 n)
+  where
+    go :
+         (cur,x : Nat)
+      -> {auto s : Ix x n}
+      -> {auto 0 lte : LTE cur $ ixToNat s}
+      -> MArray n b
+      -@ !* (m ** IArray m b)
+    go cur 0     marr =
+      let MkBang res := freezeLTE cur @{curLTE s lte} marr
+       in MkBang (cur ** res)
+    go cur (S j) marr = case f (ix arr j) of
+      Just vb =>
+        let marr2 := setNat cur @{curLT s lte} vb marr
+         in go (S cur) j marr2
+      Nothing => go cur j marr

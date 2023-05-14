@@ -56,6 +56,10 @@ alloc : (n : Nat) -> a -> (MArray n a -@ !* b) -@ !* b
 alloc n v f = f (MA $ prim__newArray (cast n) v %MkWorld)
 
 export
+unsafeAlloc : (n : Nat) -> (MArray n a -@ !* b) -@ !* b
+unsafeAlloc n f = alloc n (believe_me ()) f
+
+export
 set : Fin n -> a -> MArray n a -@ MArray n a
 set m x (MA arr) = MA $ set' (finToNat m) x arr
 
@@ -64,5 +68,9 @@ get : Fin n -> MArray n a -@ Res a (const $ MArray n a)
 get m (MA arr) = prim__arrayGet arr (cast $ finToNat m) %MkWorld # MA arr
 
 export
+freezeLTE : (0 m : Nat) -> {auto 0 lte : LTE m n} -> MArray n a -@ !* IArray m a
+freezeLTE _ (MA arr) = MkBang $ IA arr
+
+export %inline
 freeze : MArray n a -@ !* IArray n a
-freeze (MA arr) = MkBang $ IA arr
+freeze = freezeLTE n @{reflexive}
