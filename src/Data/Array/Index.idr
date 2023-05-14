@@ -12,6 +12,12 @@ ltLemma (S k) m (S n) prf  = LTESucc $ ltLemma k m n (injective prf)
 ltLemma (S k) m 0     prf  = absurd prf
 
 export
+0 lteLemma : (0 k,m,n : Nat) -> k + m === n -> LTE k n
+lteLemma 0     m m     Refl = %search
+lteLemma (S k) m (S n) prf  = LTESucc $ lteLemma k m n (injective prf)
+lteLemma (S k) m 0     prf  = absurd prf
+
+export
 0 lteSuccPlus : (k : Nat) -> LTE (S k) (k + S m)
 lteSuccPlus 0     = LTESucc LTEZero
 lteSuccPlus (S k) = LTESucc $ lteSuccPlus k
@@ -65,6 +71,10 @@ ixLemma (IS v) = trans (plusSuccRightSucc _ _) $ ixLemma v
 export
 0 ixLT : (x : Ix (S m) n) -> LT (ixToNat x) n
 ixLT s = ltLemma _ _ _ $ ixLemma s
+
+export
+0 ixLTE : (x : Ix m n) -> LTE (ixToNat x) n
+ixLTE s = lteLemma _ _ _ $ ixLemma s
 
 public export
 ixToFin : Ix (S m) n -> Fin n
