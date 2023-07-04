@@ -109,6 +109,16 @@ prop_mapMaybe = property $ do
   vs <- forAll arrBits
   toList (mapMaybe foo vs) === mapMaybe foo (toList vs)
 
+prop_foldrKV : Property
+prop_foldrKV = property1 $
+  foldrKV (\x,v,vs => (x,v) :: vs) [] (array ["a","b","c"]) ===
+  (the (List (Fin 3, String)) [(0,"a"), (1,"b"), (2,"c")])
+
+prop_foldlKV : Property
+prop_foldlKV = property1 $
+  foldlKV (\x,sv,v => sv :< (x,v)) [<] (array ["a","b","c"]) ===
+  [<(0,"a"), (1,"b"), (2,"c")]
+
 export
 props : Group
 props = MkGroup "Array"
@@ -129,5 +139,7 @@ props = MkGroup "Array"
   , ("prop_iterate", prop_iterate)
   , ("prop_filter", prop_filter)
   , ("prop_mapMaybe", prop_mapMaybe)
+  , ("prop_foldrKV", prop_foldrKV)
+  , ("prop_foldlKV", prop_foldlKV)
   ]
 
