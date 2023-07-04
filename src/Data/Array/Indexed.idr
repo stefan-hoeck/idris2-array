@@ -223,3 +223,13 @@ mapMaybeWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
 export %inline
 mapMaybe : {n : Nat} -> (a -> Maybe b) -> IArray n a -> Array b
 mapMaybe = mapMaybeWithKey . const
+
+
+export
+append : {m,n : Nat} -> IArray m a -> IArray n a -> IArray (m + n) a
+append {m = 0}   a1 a2 = a2
+append {m = S v} a1 a2 = generate (S v + n) $ \x => case tryFinToFin {k = S v} x of
+  Just y  => at a1 y
+  Nothing => case tryNatToFin {k = n} (finToNat x `minus` S v) of
+    Just y  => at a2 y
+    Nothing => at a1 0

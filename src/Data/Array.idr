@@ -34,6 +34,14 @@ Foldable Array where
   toList (A _ arr)    = toList arr
   null   (A _ arr)    = null arr
 
+export
+Semigroup (Array a) where
+  A m a1 <+> A n a2 = A (m+n) $ append a1 a2
+
+export
+Monoid (Array a) where
+  neutral = A 0 empty
+
 --------------------------------------------------------------------------------
 --          Initializing Arrays
 --------------------------------------------------------------------------------
