@@ -7,13 +7,6 @@ import public Data.Array.Mutable
 
 %default total
 
-||| An immutable array paired with its size (= number of values).
-public export
-record Array a where
-  constructor A
-  size : Nat
-  arr  : IArray size a
-
 --------------------------------------------------------------------------------
 --          Interfaces
 --------------------------------------------------------------------------------
@@ -77,8 +70,8 @@ take k (A size arr) with (k <= size) proof eq
 
 export %inline
 filter : (a -> Bool) -> Array a -> Array a
-filter f (A size arr) = let (m ** a2) := filter f arr in A m a2
+filter f (A size arr) = filter f arr
 
 export %inline
 mapMaybe : (a -> Maybe b) -> Array a -> Array b
-mapMaybe f (A size arr) = let (m ** a2) := mapMaybe f arr in A m a2
+mapMaybe f (A size arr) = mapMaybe f arr

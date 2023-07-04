@@ -5,6 +5,13 @@ import Data.List
 
 %default total
 
+||| An immutable array paired with its size (= number of values).
+public export
+record Array a where
+  constructor A
+  size : Nat
+  arr  : IArray size a
+
 --------------------------------------------------------------------------------
 --          Accessing Data
 --------------------------------------------------------------------------------
@@ -120,6 +127,10 @@ export
 {n : Nat} -> Show a => Show (IArray n a) where
   showPrec p arr = showCon p "array" (showArg $ ontoList [] n arr)
 
+export
+mapWithIndex : {n : _} -> (Fin n -> a -> b) -> IArray n a -> IArray n b
+mapWithIndex f arr = generate n (\x => f x (at arr x))
+
 --------------------------------------------------------------------------------
 --          Subarrays
 --------------------------------------------------------------------------------
@@ -131,39 +142,55 @@ curLTE s lte = transitive lte $ ixLTE s
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
 export
-filter : {n : Nat} -> (a -> Bool) -> IArray n a -> (m ** IArray m a)
-filter f arr = unrestricted $ unsafeAlloc n (go 0 n)
+filterWithKey :
+     {n : Nat}
+  -> (Fin n -> a -> Bool)
+  -> IArray n a
+  -> Array a
+filterWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
   where
     go :
          (cur,x : Nat)
       -> {auto s : Ix x n}
       -> {auto 0 lte : LTE cur $ ixToNat s}
       -> MArray n a
-      -@ !* (m ** IArray m a)
+      -@ !* Array a
     go cur 0     marr =
       let MkBang res := freezeLTE cur @{curLTE s lte} marr
-       in MkBang (cur ** res)
-    go cur (S j) marr = case f (ix arr j) of
+       in MkBang (A cur res)
+    go cur (S j) marr = case f (ixToFin s) (ix arr j) of
       True  =>
         let marr2 := setNat cur @{curLT s lte} (ix arr j) marr
          in go (S cur) j marr2
       False => go cur j marr
 
+export %inline
+filter : {n : Nat} -> (a -> Bool) -> IArray n a -> Array a
+filter = filterWithKey . const
+
 export
-mapMaybe : {n : Nat} -> (a -> Maybe b) -> IArray n a -> (m ** IArray m b)
-mapMaybe f arr = unrestricted $ unsafeAlloc n (go 0 n)
+mapMaybeWithKey :
+     {n : Nat}
+  -> (Fin n -> a -> Maybe b)
+  -> IArray n a
+  -> Array b
+mapMaybeWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
   where
     go :
          (cur,x : Nat)
       -> {auto s : Ix x n}
       -> {auto 0 lte : LTE cur $ ixToNat s}
       -> MArray n b
-      -@ !* (m ** IArray m b)
+      -@ !* Array b
     go cur 0     marr =
       let MkBang res := freezeLTE cur @{curLTE s lte} marr
-       in MkBang (cur ** res)
-    go cur (S j) marr = case f (ix arr j) of
+       in MkBang (A cur res)
+    go cur (S j) marr = case f (ixToFin s) (ix arr j) of
       Just vb =>
         let marr2 := setNat cur @{curLT s lte} vb marr
          in go (S cur) j marr2
       Nothing => go cur j marr
+
+export %inline
+mapMaybe : {n : Nat} -> (a -> Maybe b) -> IArray n a -> Array b
+mapMaybe = mapMaybeWithKey . const
