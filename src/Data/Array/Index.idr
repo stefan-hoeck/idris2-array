@@ -63,6 +63,21 @@ ixToNat : Ix m n -> Nat
 ixToNat IZ     = 0
 ixToNat (IS n) = S $ ixToNat n
 
+public export
+succIx : Ix m n -> Ix (S m) (S n)
+succIx IZ     = IZ
+succIx (IS x) = IS (succIx x)
+
+public export
+natToIx : (n : Nat) -> Ix 0 n
+natToIx 0     = IZ
+natToIx (S k) = IS $ succIx (natToIx k)
+
+public export
+natToIx1 : (n : Nat) -> Ix 1 (S n)
+natToIx1 n = case natToIx (S n) of
+  IS x => x
+
 export
 0 ixLemma : (x : Ix m n) -> ixToNat x + m === n
 ixLemma IZ     = Refl
@@ -95,7 +110,6 @@ lsl = lteSuccLeft p
 --------------------------------------------------------------------------------
 --          Proofs
 --------------------------------------------------------------------------------
-
 
 public export
 0 lteOpReflectsLTE : (m,n : Nat) -> (m <= n) === True -> LTE m n

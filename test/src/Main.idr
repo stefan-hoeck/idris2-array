@@ -1,17 +1,13 @@
 module Main
 
-import Data.Array
+import Array
+import Index
 import Hedgehog
 
-arrayOf : Gen a -> Gen (Array a)
-arrayOf g = fromList <$> list (linear 0 10) g
-
-prop_eq_refl : Property
-prop_eq_refl = property $ do
-  vs <- forAll (arrayOf anyBits32)
-  vs === vs
+%default total
 
 main : IO ()
-main = test . pure $ MkGroup "Array"
-  [ ("prop_eq_refl", prop_eq_refl)
+main = test
+  [ Array.props
+  , Index.props
   ]
