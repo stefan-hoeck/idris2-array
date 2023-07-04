@@ -124,6 +124,21 @@ prop_append = property $ do
   [x,y] <- forAll $ np [arrBits,arrBits]
   toList (x <+> y) === (toList x ++ toList y)
 
+prop_semigroup_assoc : Property
+prop_semigroup_assoc = property $ do
+  [x,y,z] <- forAll $ np [arrBits,arrBits,arrBits]
+  (x <+> (y <+> z)) === ((x <+> y) <+> z)
+
+prop_monoid_left_neutral : Property
+prop_monoid_left_neutral = property $ do
+  x <- forAll arrBits
+  (empty <+> x) === x
+
+prop_monoid_right_neutral : Property
+prop_monoid_right_neutral = property $ do
+  x <- forAll arrBits
+  (x <+> empty) === x
+
 export
 props : Group
 props = MkGroup "Array"
@@ -147,5 +162,8 @@ props = MkGroup "Array"
   , ("prop_foldrKV", prop_foldrKV)
   , ("prop_foldlKV", prop_foldlKV)
   , ("prop_append", prop_append)
+  , ("prop_semigroup_assoc", prop_semigroup_assoc)
+  , ("prop_monoid_left_neutral", prop_monoid_left_neutral)
+  , ("prop_monoid_right_neutral", prop_monoid_right_neutral)
   ]
 
