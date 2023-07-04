@@ -132,3 +132,16 @@ eqOpReflectsEquals (S k) (S j) prf = cong S $ eqOpReflectsEquals k j prf
 eqOpReflectsEquals 0     (S k) prf impossible
 eqOpReflectsEquals (S k) 0     prf impossible
 
+--------------------------------------------------------------------------------
+--          Proofs
+--------------------------------------------------------------------------------
+
+export
+tryNatToFin : {k : _} -> Nat -> Maybe (Fin k)
+tryNatToFin n with (n < k) proof eq
+  _ | True  = Just $ natToFinLT n @{ltOpReflectsLT n k eq}
+  _ | False = Nothing
+
+export %inline
+tryFinToFin : {k : _} -> Fin n -> Maybe (Fin k)
+tryFinToFin = tryNatToFin . finToNat

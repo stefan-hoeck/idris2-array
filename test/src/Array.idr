@@ -119,6 +119,11 @@ prop_foldlKV = property1 $
   foldlKV (\x,sv,v => sv :< (x,v)) [<] (array ["a","b","c"]) ===
   [<(0,"a"), (1,"b"), (2,"c")]
 
+prop_append : Property
+prop_append = property $ do
+  [x,y] <- forAll $ np [arrBits,arrBits]
+  toList (x <+> y) === (toList x ++ toList y)
+
 export
 props : Group
 props = MkGroup "Array"
@@ -141,5 +146,6 @@ props = MkGroup "Array"
   , ("prop_mapMaybe", prop_mapMaybe)
   , ("prop_foldrKV", prop_foldrKV)
   , ("prop_foldlKV", prop_foldlKV)
+  , ("prop_append", prop_append)
   ]
 
