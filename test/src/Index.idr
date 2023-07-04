@@ -38,10 +38,24 @@ prop_natToIxToFinRoundTrip = property $ do
   n <- forAllNats
   finToNat (ixToFin $ natToIx1 n) === n
 
+-- Verifies that `weaken` runs in O(1)
+prop_weakenRoundTrip : Property
+prop_weakenRoundTrip = property $ do
+  n <- forAllNats
+  finToNat (weaken $ natToFinLT n @{refl}) === n
+
+-- Verifies that `weakenN` runs in O(1)
+prop_weakenNRoundTrip : Property
+prop_weakenNRoundTrip = property $ do
+  n <- forAllNats
+  finToNat (weakenN 1000 $ natToFinLT n @{refl}) === n
+
 export
 props : Group
 props = MkGroup "Index"
   [ ("prop_ixToNatRoundTrip", prop_ixToNatRoundTrip)
   , ("prop_natToFinRoundTrip", prop_natToFinRoundTrip)
   , ("prop_natToIxToFinRoundTrip", prop_natToIxToFinRoundTrip)
+  , ("prop_weakenRoundTrip", prop_weakenRoundTrip)
+  , ("prop_weakenNRoundTrip", prop_weakenNRoundTrip)
   ]
