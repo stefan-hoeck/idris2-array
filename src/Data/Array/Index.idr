@@ -111,9 +111,16 @@ lsl = lteSuccLeft p
 --          Proofs
 --------------------------------------------------------------------------------
 
-public export
+export
 0 lteOpReflectsLTE : (m,n : Nat) -> (m <= n) === True -> LTE m n
 lteOpReflectsLTE 0     (S k) prf = LTEZero
 lteOpReflectsLTE (S k) (S j) prf = LTESucc (lteOpReflectsLTE k j prf)
 lteOpReflectsLTE 0 0         prf = LTEZero
 lteOpReflectsLTE (S k) 0     prf impossible
+
+export
+0 ltOpReflectsLT : (m,n : Nat) -> (m < n) === True -> LT m n
+ltOpReflectsLT 0     (S k) prf = LTESucc LTEZero
+ltOpReflectsLT (S k) (S j) prf = LTESucc (ltOpReflectsLT k j prf)
+ltOpReflectsLT 0 0         prf impossible
+ltOpReflectsLT (S k) 0     prf impossible
