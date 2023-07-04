@@ -68,10 +68,6 @@ get : Fin n -> MArray n a -@ Res a (const $ MArray n a)
 get m (MA arr) = prim__arrayGet arr (cast $ finToNat m) %MkWorld # MA arr
 
 export
-mod : Fin n -> (a -> a) -> MArray n a -@ MArray n a
-mod m f arr = let v # arr2 := get m arr in set m (f v) arr2
-
-export
 freezeLTE : (0 m : Nat) -> {auto 0 lte : LTE m n} -> MArray n a -@ !* IArray m a
 freezeLTE _ (MA arr) = MkBang $ IA arr
 
