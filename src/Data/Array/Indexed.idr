@@ -108,9 +108,38 @@ foldrI : (m : Nat) -> (0 _ : LTE m n) => (e -> a -> a) -> a -> IArray n e -> a
 foldrI 0     _ x arr = x
 foldrI (S k) f x arr = foldrI k f (f (atNat arr k) x) arr
 
+foldrKV_ :
+     (m : Nat)
+  -> {auto 0 prf : LTE m n}
+  -> (Fin n -> e -> a -> a)
+  -> a
+  -> IArray n e -> a
+foldrKV_ 0     _ x arr = x
+foldrKV_ (S k) f x arr =
+  let fin := natToFinLT k @{prf} in foldrKV_ k f (f fin (at arr fin) x) arr
+
 foldlI : (m : Nat) -> (x : Ix m n) => (a -> e -> a) -> a -> IArray n e -> a
 foldlI 0     _ v arr = v
 foldlI (S k) f v arr = foldlI k f (f v (ix arr k)) arr
+
+foldlKV_ :
+     (m : Nat)
+  -> {auto x : Ix m n}
+  -> (Fin n -> a -> e -> a)
+  -> a
+  -> IArray n e
+  -> a
+foldlKV_ 0     _ v arr = v
+foldlKV_ (S k) f v arr =
+  let fin := ixToFin x in foldlKV_ k f (f fin v (at arr fin)) arr
+
+export %inline
+foldrKV : {n : _} -> (Fin n -> e -> a -> a) -> a -> IArray n e -> a
+foldrKV = foldrKV_ n
+
+export %inline
+foldlKV : {n : _} -> (Fin n -> a -> e -> a) -> a -> IArray n e -> a
+foldlKV = foldlKV_ n
 
 export %inline
 {n : Nat} -> Foldable (IArray n) where
