@@ -124,3 +124,11 @@ ltOpReflectsLT 0     (S k) prf = LTESucc LTEZero
 ltOpReflectsLT (S k) (S j) prf = LTESucc (ltOpReflectsLT k j prf)
 ltOpReflectsLT 0 0         prf impossible
 ltOpReflectsLT (S k) 0     prf impossible
+
+export
+0 eqOpReflectsEquals : (m,n : Nat) -> (m == n) === True -> m === n
+eqOpReflectsEquals 0     0     prf = Refl
+eqOpReflectsEquals (S k) (S j) prf = cong S $ eqOpReflectsEquals k j prf
+eqOpReflectsEquals 0     (S k) prf impossible
+eqOpReflectsEquals (S k) 0     prf impossible
+
