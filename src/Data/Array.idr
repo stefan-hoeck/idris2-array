@@ -35,6 +35,10 @@ Foldable Array where
   null   (A _ arr)    = null arr
 
 export
+Traversable Array where
+  traverse f (A s arr) = A s <$> traverse f arr
+
+export
 Semigroup (Array a) where
   A m a1 <+> A n a2 = A (m+n) $ append a1 a2
 
