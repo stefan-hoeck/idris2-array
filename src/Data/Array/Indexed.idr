@@ -196,6 +196,24 @@ mapWithIndex : {n : _} -> (Fin n -> a -> b) -> IArray n a -> IArray n b
 mapWithIndex f arr = generate n (\x => f x (at arr x))
 
 --------------------------------------------------------------------------------
+--          Traversals
+--------------------------------------------------------------------------------
+
+export
+traverseWithIndex :
+     {n : _}
+  -> {auto app : Applicative f}
+  -> (Fin n -> a -> f b)
+  -> IArray n a
+  -> f (IArray n b)
+traverseWithIndex f arr =
+  arrayV <$> traverse (\(x,v) => f x v) (toVectWithIndex arr)
+
+export
+{n : _} -> Traversable (IArray n) where
+  traverse = traverseWithIndex . const
+
+--------------------------------------------------------------------------------
 --          Subarrays
 --------------------------------------------------------------------------------
 
