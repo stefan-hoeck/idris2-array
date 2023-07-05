@@ -2,6 +2,7 @@ module Data.Array.Indexed
 
 import public Data.Array.Mutable
 import Data.List
+import Data.Vect
 
 %default total
 
@@ -36,6 +37,11 @@ export
 array : (ls : List a) -> IArray (length ls) a
 array []        = empty
 array (x :: xs) = unrestricted $ allocList (x::xs) freeze
+
+export
+arrayV : {n : _} -> Vect n a -> IArray n a
+arrayV []        = empty
+arrayV (x :: xs) = unrestricted $ allocVect (x::xs) freeze
 
 export
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
@@ -103,6 +109,35 @@ export
 ontoList : List a -> (m : Nat) -> {auto 0 lte : LTE m n} -> IArray n a -> List a
 ontoList xs 0     arr = xs
 ontoList xs (S k) arr = ontoList (atNat arr k :: xs) k arr
+
+ontoVect :
+     Vect k a
+  -> (m : Nat)
+  -> {auto 0 lte : LTE m n}
+  -> IArray n a
+  -> Vect (k + m) a
+ontoVect xs 0     arr = rewrite plusZeroRightNeutral k in xs
+ontoVect xs (S v) arr =
+  rewrite sym (plusSuccRightSucc k v) in ontoVect (atNat arr v :: xs) v arr
+
+ontoVectWithIndex :
+     Vect k (Fin n, a)
+  -> (m : Nat)
+  -> {auto 0 lte : LTE m n}
+  -> IArray n a
+  -> Vect (k + m) (Fin n, a)
+ontoVectWithIndex xs 0     arr = rewrite plusZeroRightNeutral k in xs
+ontoVectWithIndex xs (S v) arr =
+  rewrite sym (plusSuccRightSucc k v)
+  in let x := natToFinLT v in ontoVectWithIndex ((x, at arr x) :: xs) v arr
+
+export %inline
+toVect : {n : _} -> IArray n a -> Vect n a
+toVect = ontoVect [] n
+
+export %inline
+toVectWithIndex : {n : _} -> IArray n a -> Vect n (Fin n, a)
+toVectWithIndex = ontoVectWithIndex [] n
 
 foldrI : (m : Nat) -> (0 _ : LTE m n) => (e -> a -> a) -> a -> IArray n e -> a
 foldrI 0     _ x arr = x

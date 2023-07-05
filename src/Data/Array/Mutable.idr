@@ -3,6 +3,7 @@ module Data.Array.Mutable
 import public Data.Array.Core
 import public Data.Array.Index
 import Data.List
+import Data.Vect
 
 %default total
 
@@ -71,6 +72,14 @@ allocList :
   -> (MArray (length as) a -@ !* b)
   -@ !* b
 allocList (x::xs) f = alloc (S $ length xs) x (fromL {xs = x::xs} xs f)
+
+fromV : Vect k a -> Ix k n => (MArray n a -@ !* b) -@ MArray n a -@ !* b
+fromV           []        f x = f x
+fromV {k = S m} (y :: ys) f x = fromV ys f (setIx m y x)
+
+export
+allocVect : {n : _} -> Vect (S n) a -> (MArray (S n) a -@ !* b) -@ !* b
+allocVect (x::xs) f = alloc (S n) x (fromV xs f)
 
 gen :
      (m : Nat)

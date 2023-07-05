@@ -3,6 +3,7 @@ module Array
 import Data.Array
 import Data.SOP
 import Data.SnocList
+import Data.Vect
 import Hedgehog
 
 %default total
@@ -67,6 +68,11 @@ prop_from_to_list : Property
 prop_from_to_list = property $ do
   vs <- forAll (list (linear 0 10) anyBits8)
   toList (Array.fromList vs) === vs
+
+prop_from_to_vect : Property
+prop_from_to_vect = property $ do
+  vs <- forAll (vect 20 anyBits8)
+  toVect (arrayV vs) === vs
 
 prop_foldl : Property
 prop_foldl = property $ do
@@ -151,6 +157,7 @@ props = MkGroup "Array"
   , ("prop_lte", prop_lte)
   , ("prop_map_id", prop_map_id)
   , ("prop_from_to_list", prop_from_to_list)
+  , ("prop_from_to_vect", prop_from_to_vect)
   , ("prop_foldl", prop_foldl)
   , ("prop_foldr", prop_foldr)
   , ("prop_null", prop_null)
