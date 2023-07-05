@@ -120,9 +120,24 @@ ontoVect xs 0     arr = rewrite plusZeroRightNeutral k in xs
 ontoVect xs (S v) arr =
   rewrite sym (plusSuccRightSucc k v) in ontoVect (atNat arr v :: xs) v arr
 
+ontoVectWithIndex :
+     Vect k (Fin n, a)
+  -> (m : Nat)
+  -> {auto 0 lte : LTE m n}
+  -> IArray n a
+  -> Vect (k + m) (Fin n, a)
+ontoVectWithIndex xs 0     arr = rewrite plusZeroRightNeutral k in xs
+ontoVectWithIndex xs (S v) arr =
+  rewrite sym (plusSuccRightSucc k v)
+  in let x := natToFinLT v in ontoVectWithIndex ((x, at arr x) :: xs) v arr
+
 export %inline
 toVect : {n : _} -> IArray n a -> Vect n a
 toVect = ontoVect [] n
+
+export %inline
+toVectWithIndex : {n : _} -> IArray n a -> Vect n (Fin n, a)
+toVectWithIndex = ontoVectWithIndex [] n
 
 foldrI : (m : Nat) -> (0 _ : LTE m n) => (e -> a -> a) -> a -> IArray n e -> a
 foldrI 0     _ x arr = x
