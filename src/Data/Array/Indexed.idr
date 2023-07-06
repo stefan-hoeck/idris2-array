@@ -34,14 +34,19 @@ empty : IArray 0 a
 empty = believe_me $ unrestricted $ alloc 0 () freeze
 
 export
-array : (ls : List a) -> IArray (length ls) a
-array []        = empty
-array (x :: xs) = unrestricted $ allocList (x::xs) freeze
+arrayL : (ls : List a) -> IArray (length ls) a
+arrayL []        = empty
+arrayL (x :: xs) = unrestricted $ allocList (x::xs) freeze
 
 export
-arrayV : {n : _} -> Vect n a -> IArray n a
-arrayV []        = empty
-arrayV (x :: xs) = unrestricted $ allocVect (x::xs) freeze
+array : {n : _} -> Vect n a -> IArray n a
+array []        = empty
+array (x :: xs) = unrestricted $ allocVect (x::xs) freeze
+
+export
+revArray : {n : _} -> Vect n a -> IArray n a
+revArray []        = empty
+revArray (x :: xs) = unrestricted $ allocRevVect (x::xs) freeze
 
 export
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
@@ -215,7 +220,7 @@ traverseWithIndex :
   -> IArray n a
   -> f (IArray n b)
 traverseWithIndex f arr =
-  arrayV <$> traverse (\(x,v) => f x v) (toVectWithIndex arr)
+  array <$> traverse (\(x,v) => f x v) (toVectWithIndex arr)
 
 export
 {n : _} -> Traversable (IArray n) where

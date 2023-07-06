@@ -56,7 +56,7 @@ empty = A 0 empty
 
 export %inline
 fromList : (ls : List a) -> Array a
-fromList ls = A _ $ array ls
+fromList ls = A _ $ arrayL ls
 
 export %inline
 generate : (n : Nat) -> (Fin n -> a) -> Array a

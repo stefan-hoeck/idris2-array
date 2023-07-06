@@ -73,7 +73,12 @@ prop_from_to_list = property $ do
 prop_from_to_vect : Property
 prop_from_to_vect = property $ do
   vs <- forAll (vect 20 anyBits8)
-  toVect (arrayV vs) === vs
+  toVect (array vs) === vs
+
+prop_from_to_rev_vect : Property
+prop_from_to_rev_vect = property $ do
+  vs <- forAll (vect 20 anyBits8)
+  toVect (revArray vs) === reverse vs
 
 prop_foldl : Property
 prop_foldl = property $ do
@@ -164,6 +169,7 @@ props = MkGroup "Array"
   , ("prop_map_id", prop_map_id)
   , ("prop_from_to_list", prop_from_to_list)
   , ("prop_from_to_vect", prop_from_to_vect)
+  , ("prop_from_to_rev_vect", prop_from_to_rev_vect)
   , ("prop_foldl", prop_foldl)
   , ("prop_foldr", prop_foldr)
   , ("prop_null", prop_null)
