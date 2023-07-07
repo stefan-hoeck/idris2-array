@@ -1,3 +1,38 @@
+||| This module provides several ways to safely index into an
+||| array of known size. All conversions between different index
+||| types are optimized away by the compiler, because they are
+||| all of the same structure during code generation: An encoding
+||| of natural numbers which the Idris compiler converts to a
+||| native integer representation.
+|||
+||| The main type for indexing into an array of size `n` is `Fin n`,
+||| representing a natural number strictly smaller than `n`.
+|||
+||| As an alternative, we can use a natural number `k` directly, together
+||| with a proof of type `LT k n`, showing that `k` is strictly smaller
+||| than `n`. Such numbers can be converted directly to `Fin n` by means
+||| of function `Data.Nat.natToFinLT`. This way of indexing is very
+||| useful for iterating over the whole array from then end: We start
+||| with `n` itself together with an erased proof of type `LTE n n`, which
+||| can be generated automatically. By pattern matching on the current
+||| position, we can safely access all positions in the array until
+||| we arrive at 0. See the implementation of `foldr` (a private
+||| function called `foldrI`) in module `Data.Array.Indexed` for an
+||| example how this is used.
+|||
+||| It is only slightly harder to iterate over an array from the
+||| front. This is where data type `Ix m n` comes into play: It's
+||| another way of saying that `m <= n` holds, but it works in
+||| the oposite direction than `LTE`: It's zero constructor `IZ` proofs
+||| that `n <= n` for all `n`, while its successor constructor
+||| proofs that from `S k <= n` follows `k <= n`. This means, that
+||| for a given `k`, a values of type `Ix k n` corresponds to the
+||| values `n - k`. This allows us to recurse over a natural number
+||| while keeping an auto-implicit proof of type `Ix k n`, and use
+||| this proof for indexing into the array.
+||| See the implementation of `foldl` (a private
+||| function called `foldlI`) in module `Data.Array.Indexed` for an
+||| example how this is used.
 module Data.Array.Index
 
 import public Data.Fin
@@ -63,44 +98,67 @@ suffixToFin x = natToFinLT (suffixToNat x) @{suffixLT x}
 --          Ix
 --------------------------------------------------------------------------------
 
+||| A data type for safely indexing into an array from the
+||| front during in a fuction recursing on natural number `m`.
+|||
+||| This is another way to proof that `m <= n`.
 public export
 data Ix : (m,n : Nat) -> Type where
   IZ : Ix n n
   IS : Ix (S m) n -> Ix m n
 
+||| O(1) conversion from `Ix m n` to `Nat`. The result equals `n - m`.
 public export
 ixToNat : Ix m n -> Nat
 ixToNat IZ     = 0
 ixToNat (IS n) = S $ ixToNat n
 
+||| If `m <= n` then `S m <= S n`.
 public export
 succIx : Ix m n -> Ix (S m) (S n)
 succIx IZ     = IZ
 succIx (IS x) = IS (succIx x)
 
+||| Convert a natural number to the corresponding `Ix 0 n`
+||| so that `n === ixToNat (natToIx n)` as shown in
+||| `ixLemma`.
 public export
 natToIx : (n : Nat) -> Ix 0 n
 natToIx 0     = IZ
 natToIx (S k) = IS $ succIx (natToIx k)
 
+||| Convert a natural number to the corresponding `Ix 1 (S n)`,
+||| the largest value strictly smaller than `S n`.
+|||
+||| This is similar to `Data.Fin.last`.
 public export
 natToIx1 : (n : Nat) -> Ix 1 (S n)
 natToIx1 n = case natToIx (S n) of
   IS x => x
 
+||| Proof that for an index `x` of type `Ix m n` `ixToNat x` equals `n - m`.
 export
 0 ixLemma : (x : Ix m n) -> ixToNat x + m === n
 ixLemma IZ     = Refl
 ixLemma (IS v) = trans (plusSuccRightSucc _ _) $ ixLemma v
 
+||| Proof an `Ix (S m) n` corresponds to a natural number
+||| strictly smaller than `n` and can therefore be used as an index
+||| into an array of size `n`.
 export
 0 ixLT : (x : Ix (S m) n) -> LT (ixToNat x) n
 ixLT s = ltLemma _ _ _ $ ixLemma s
 
+||| Proof an `Ix m n` corresponds to a natural number
+||| smaller than or equal to `n
 export
 0 ixLTE : (x : Ix m n) -> LTE (ixToNat x) n
 ixLTE s = lteLemma _ _ _ $ ixLemma s
 
+||| From lemma `ixLT` follows, that we can convert an `Ix (S m) n` to
+||| a `Fin n` corresponding to the same natural numbers. All conversions
+||| involved are optimized away by the identity optimizer during code
+||| generation.
 public export
 ixToFin : Ix (S m) n -> Fin n
 ixToFin x = natToFinLT (ixToNat x) @{ixLT x}
