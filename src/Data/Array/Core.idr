@@ -64,6 +64,13 @@ public export
 0 Ur : Type -> Type
 Ur = (!*)
 
+||| An alias for the `Res a (const b)`, a dependent pair data type for
+||| wrapping its first argument with unrestricted quantity and its second
+||| with linear quantity.
+public export
+0 CRes : Type -> Type -> Type
+CRes a b = Res a (const b)
+
 ||| A mutable array.
 export
 record MArray (n : Nat) (a : Type) where
@@ -117,8 +124,20 @@ set m x (MA arr) = MA $ set' (finToNat m) x arr
 ||| linear context. See implementation notes on `set` about some details,
 ||| how this works.
 export
-get : Fin n -> MArray n a -@ Res a (const $ MArray n a)
+get : Fin n -> MArray n a -@ CRes a (MArray n a)
 get m (MA arr) = prim__arrayGet arr (cast $ finToNat m) %MkWorld # MA arr
+
+||| Safely modify a value in a mutable array.
+|||
+||| Since mutable arrays must be used in a linear context, and this
+||| function "uses up" its input as far as the linearity checker is
+||| concerned, this returns a new `MArray` wrapper, which must then
+||| again be used exactly once.
+export
+modify : Fin n -> (a -> a) -> MArray n a -@ MArray n a
+modify m f (MA arr) =
+  let v := prim__arrayGet arr (cast $ finToNat m) %MkWorld
+   in MA $ set' (finToNat m) (f v) arr
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||

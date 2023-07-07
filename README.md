@@ -20,3 +20,8 @@ details and documentation):
   for working with mutable and immutable arrays. Mutable arrays can be used
   in pure code as long as they are kept in a linear context, which
   prevents them from being freely shared.
+
+* `Data.Array.Mutable`: Utilities for working with mutable linear arrays.
+  Currently, this mainly contains different functions for filling a mutable
+  array with values from different sources, but also for setting and reading
+  values using different types of indices.
