@@ -15,3 +15,8 @@ details and documentation):
   safely accessing the values in an indexed array. The default type to
   use for indexing is `Fin n`, but other types might be better suited
   for iterating over the values in an array for the left or the right.
+
+* `Data.Array.Core`: This module holds the core data types and functions
+  for working with mutable and immutable arrays. Mutable arrays can be used
+  in pure code as long as they are kept in a linear context, which
+  prevents them from being freely shared.
