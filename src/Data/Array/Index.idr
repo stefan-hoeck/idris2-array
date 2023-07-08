@@ -204,12 +204,14 @@ eqOpReflectsEquals (S k) 0     prf impossible
 --          Proofs
 --------------------------------------------------------------------------------
 
+||| Tries to convert a natural number to a `Fin k`.
 export
 tryNatToFin : {k : _} -> Nat -> Maybe (Fin k)
 tryNatToFin n with (n < k) proof eq
   _ | True  = Just $ natToFinLT n @{ltOpReflectsLT n k eq}
   _ | False = Nothing
 
+||| Tries to convert a `Fin n` to a `Fin k`.
 export %inline
 tryFinToFin : {k : _} -> Fin n -> Maybe (Fin k)
 tryFinToFin = tryNatToFin . finToNat
