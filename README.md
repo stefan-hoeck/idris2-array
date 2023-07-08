@@ -25,3 +25,6 @@ details and documentation):
   Currently, this mainly contains different functions for filling a mutable
   array with values from different sources, but also for setting and reading
   values using different types of indices.
+
+* `Data.Array.Indexed`: Functions for creating, inspecting, and modifying
+  size-indexed immutable arrays.
