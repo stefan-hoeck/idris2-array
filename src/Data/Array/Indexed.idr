@@ -246,6 +246,8 @@ setAt x y = mapWithIndex (\k,v => if heqFin x k then y else v)
 --          Traversals
 --------------------------------------------------------------------------------
 
+||| Effectful traversal of the values in a graph together with
+||| their corresponding indices.
 export
 traverseWithIndex :
      {n : _}
@@ -270,6 +272,8 @@ curLTE s lte = transitive lte $ ixLTE s
 0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
+||| Filter the values in a graph together with their corresponding
+||| indices according to the given predicate.
 export
 filterWithKey :
      {n : Nat}
@@ -293,10 +297,13 @@ filterWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
          in go (S cur) j marr2
       False => go cur j marr
 
+||| Filters the values in a graph according to the given predicate.
 export %inline
 filter : {n : Nat} -> (a -> Bool) -> IArray n a -> Array a
 filter = filterWithKey . const
 
+||| Map the values in a graph together with their corresponding indices
+||| over a function that might not return a result for all values.
 export
 mapMaybeWithKey :
      {n : Nat}
@@ -320,10 +327,17 @@ mapMaybeWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
          in go (S cur) j marr2
       Nothing => go cur j marr
 
+||| Map the values in a graph together with their corresponding indices
+||| over a function that might not return a result for all values.
 export %inline
 mapMaybe : {n : Nat} -> (a -> Maybe b) -> IArray n a -> Array b
 mapMaybe = mapMaybeWithKey . const
 
+--------------------------------------------------------------------------------
+--          Concatenating Arrays
+--------------------------------------------------------------------------------
+
+||| Concatenate two arrays in O(m+n) runtime.
 export
 append : {m,n : Nat} -> IArray m a -> IArray n a -> IArray (m + n) a
 append {m = 0}   a1 a2 = a2
