@@ -7,6 +7,8 @@ import Data.Vect
 %default total
 
 ||| An immutable array paired with its size (= number of values).
+|||
+||| This is the dependent pair version of `IArray size a`.
 public export
 record Array a where
   constructor A
@@ -17,10 +19,12 @@ record Array a where
 --          Accessing Data
 --------------------------------------------------------------------------------
 
+||| Safely access a value in an array at position `n - m`.
 export %inline
 ix : IArray n a -> (0 m : Nat) -> {auto x: Ix (S m) n} -> a
 ix arr _ = at arr (ixToFin x)
 
+||| Safely access a value in an array at the given position.
 export %inline
 atNat : IArray n a -> (m : Nat) -> {auto 0 lt : LT m n} -> a
 atNat arr x = at arr (natToFinLT x)
@@ -29,35 +33,52 @@ atNat arr x = at arr (natToFinLT x)
 --          Initializing Arrays
 --------------------------------------------------------------------------------
 
+||| The empty array.
 export
 empty : IArray 0 a
 empty = believe_me $ unrestricted $ alloc 0 () freeze
 
+||| Copy the values in a list to an array of the same length.
 export
 arrayL : (ls : List a) -> IArray (length ls) a
 arrayL []        = empty
 arrayL (x :: xs) = unrestricted $ allocList (x::xs) freeze
 
+||| Copy the values in a vector to an array of the same length.
 export
 array : {n : _} -> Vect n a -> IArray n a
 array []        = empty
 array (x :: xs) = unrestricted $ allocVect (x::xs) freeze
 
+||| Copy the values in a vector to an array of the same length
+||| in reverse order.
+|||
+||| This is useful the values in the array have been collected
+||| from tail to head for instance when parsing some data.
 export
 revArray : {n : _} -> Vect n a -> IArray n a
 revArray []        = empty
 revArray (x :: xs) = unrestricted $ allocRevVect (x::xs) freeze
 
+||| Generate an immutable array of the given size using
+||| the given iteration function.
 export
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
 generate 0     f = empty
 generate (S k) f = unrestricted $ allocGen (S k) f freeze
 
+||| Generate an array of the given size by filling it with the
+||| results of repeatedly applying `f` to the initial value.
 export
-iterate : (n : Nat) -> (a -> a) -> a -> IArray n a
+iterate : (n : Nat) -> (f : a -> a) -> a -> IArray n a
 iterate 0     _ _ = empty
 iterate (S k) f v = unrestricted $ allocIter (S k) f v freeze
 
+||| Copy the content of an array to a new array.
+|||
+||| This is mainly useful for reducing memory consumption, in case the
+||| original array is actually backed by a much larger array, for
+||| instance after taking a smalle prefix of a large array with `take`.
 export
 force : {n : _} -> IArray n a -> IArray n a
 force arr = generate n (at arr)
@@ -111,7 +132,7 @@ export
 --          Maps and Folds
 --------------------------------------------------------------------------------
 
-ontoList : List a -> (m : Nat) -> {auto 0 lte : LTE m n} -> IArray n a -> List a
+ontoList : List a -> (m : Nat) -> (0 lte : LTE m n) => IArray n a -> List a
 ontoList xs 0     arr = xs
 ontoList xs (S k) arr = ontoList (atNat arr k :: xs) k arr
 
@@ -136,10 +157,13 @@ ontoVectWithIndex xs (S v) arr =
   rewrite sym (plusSuccRightSucc k v)
   in let x := natToFinLT v in ontoVectWithIndex ((x, at arr x) :: xs) v arr
 
+||| Convert an array to a vector of the same length.
 export %inline
 toVect : {n : _} -> IArray n a -> Vect n a
 toVect = ontoVect [] n
 
+||| Convert an array to a vector of the same length
+||| pairing all values with their index.
 export %inline
 toVectWithIndex : {n : _} -> IArray n a -> Vect n (Fin n, a)
 toVectWithIndex = ontoVectWithIndex [] n
@@ -173,10 +197,12 @@ foldlKV_ 0     _ v arr = v
 foldlKV_ (S k) f v arr =
   let fin := ixToFin x in foldlKV_ k f (f fin v (at arr fin)) arr
 
+||| Right fold over the values of an array plus their indices.
 export %inline
 foldrKV : {n : _} -> (Fin n -> e -> a -> a) -> a -> IArray n e -> a
 foldrKV = foldrKV_ n
 
+||| Left fold over the values of an array plus their indices.
 export %inline
 foldlKV : {n : _} -> (Fin n -> a -> e -> a) -> a -> IArray n e -> a
 foldlKV = foldlKV_ n
@@ -196,14 +222,22 @@ export
 {n : Nat} -> Show a => Show (IArray n a) where
   showPrec p arr = showCon p "array" (showArg $ ontoList [] n arr)
 
+||| Mapping over the values of an array together with their indices.
 export
 mapWithIndex : {n : _} -> (Fin n -> a -> b) -> IArray n a -> IArray n b
 mapWithIndex f arr = generate n (\x => f x (at arr x))
 
+||| Update a single position in an array by applying the given
+||| function.
+|||
+||| This will have to copy the whol array, so it runs in O(n).
 export
 updateAt : {n : _} -> Fin n -> (a -> a) -> IArray n a -> IArray n a
 updateAt x f = mapWithIndex (\k,v => if heqFin x k then f v else v)
 
+||| Set a single position in an array.
+|||
+||| This will have to copy the whol array, so it runs in O(n).
 export
 setAt : {n : _} -> Fin n -> a -> IArray n a -> IArray n a
 setAt x y = mapWithIndex (\k,v => if heqFin x k then y else v)
@@ -212,6 +246,8 @@ setAt x y = mapWithIndex (\k,v => if heqFin x k then y else v)
 --          Traversals
 --------------------------------------------------------------------------------
 
+||| Effectful traversal of the values in a graph together with
+||| their corresponding indices.
 export
 traverseWithIndex :
      {n : _}
@@ -236,6 +272,8 @@ curLTE s lte = transitive lte $ ixLTE s
 0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
+||| Filter the values in a graph together with their corresponding
+||| indices according to the given predicate.
 export
 filterWithKey :
      {n : Nat}
@@ -259,10 +297,13 @@ filterWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
          in go (S cur) j marr2
       False => go cur j marr
 
+||| Filters the values in a graph according to the given predicate.
 export %inline
 filter : {n : Nat} -> (a -> Bool) -> IArray n a -> Array a
 filter = filterWithKey . const
 
+||| Map the values in a graph together with their corresponding indices
+||| over a function that might not return a result for all values.
 export
 mapMaybeWithKey :
      {n : Nat}
@@ -286,10 +327,17 @@ mapMaybeWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
          in go (S cur) j marr2
       Nothing => go cur j marr
 
+||| Map the values in a graph together with their corresponding indices
+||| over a function that might not return a result for all values.
 export %inline
 mapMaybe : {n : Nat} -> (a -> Maybe b) -> IArray n a -> Array b
 mapMaybe = mapMaybeWithKey . const
 
+--------------------------------------------------------------------------------
+--          Concatenating Arrays
+--------------------------------------------------------------------------------
+
+||| Concatenate two arrays in O(m+n) runtime.
 export
 append : {m,n : Nat} -> IArray m a -> IArray n a -> IArray (m + n) a
 append {m = 0}   a1 a2 = a2
