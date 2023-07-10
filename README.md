@@ -32,3 +32,18 @@ details and documentation):
 In addition, there is a [tutorial](docs/src/Linear/Tutorial.md), describing
 in detail some aspects of linear types in Idris and how `Data.Array.Core`
 was implemented.
+
+## Additional Resources
+
+There are not many resources available about linear types in Idris, but there
+are several blog posts, articles, and libraries explaining and using these
+concepts in Haskell. Here is a non-comprehensive selection:
+
+* [Idris2 introduction to linear types](https://idris2.readthedocs.io/en/latest/tutorial/multiplicities.html#linearity)
+  This gives a nice introduction to using linear types for safe resource
+  management in Idris2, a topic, which is not being discussed in the
+  tutorial of this library.
+* [linear-base](https://github.com/tweag/linear-base): Some parts of the
+  tutorial were inspired by the examples in this library. A treasure trove
+  of utilities, that has been well documented.
+* [TWEAK blog posts on linear types](https://www.tweag.io/blog/tags/linear-types)
