@@ -26,12 +26,13 @@ boolToNat1 : (1 b : Bool) -> Nat
 ```
 
 The `1` quantity in `boolToNat1`'s type signature means, that the `Bool`
-argument `b` must be consumed exactly once. We can *consume* an argument
-by
+argument `b` must be consumed exactly once if the resulting natural number
+is consumed exactly once. We can *consume* an argument by
 
 * pattern matching on it
 * passing it as a quantity `1` argument to another function
-* wrapping it in a data constructor with a quantity `1` argument
+* wrapping it in a data constructor as a quantity `1` argument or
+  record field
 
 Let's look at each of them before showing some counterexamples. First,
 a pattern match:
@@ -68,8 +69,8 @@ failing "Trying to use linear name b in non-linear context"
 ```
 
 The above does not work for two reasons: The arguments of `MkPair` are
-non-linear, and even if they were, we are not allowed to pass a linear
-argument to two functions:
+non-linear, and even if they were, we are not allowed to use a linear
+argument twice:
 
 
 ```idris
@@ -88,7 +89,7 @@ failing "Trying to use linear name b in non-linear context"
 ```
 
 However, at least in the example above, we can rewrite `not` in such a way,
-that it accepts its with linear quantity:
+that it accepts its with quantity `1`:
 
 ```idris
 not1 : (1 b : Bool) -> Bool
@@ -118,7 +119,7 @@ failing "Trying to use linear name v in non-linear context"
 ```
 
 Before we continue, we introduce a simple operator for describing linear
-arguments a bit less code:
+function types a bit more concisely:
 
 ```idris
 infixr 0 -@
@@ -128,9 +129,9 @@ a -@ b = (1 _ : a) -> b
 ```
 
 While it is not possible to compose linear functions with the dot operator
-from the prelude, we can define a linear version of the dot operator. Due
+from the Prelude, we can define a linear version of the dot operator. Due
 to the ambiguity resolver available in Idris, the compiler will use the
-correct version depending to the required quantity:
+correct version depending to the expected quantities:
 
 ```idris
 (.) : (b -@ c) -@ (a -@ b) -@ a -@ c
@@ -154,9 +155,9 @@ boolId1 = not1 . not1
 ### Wrapping and Unwrapping Linear Arguments
 
 We already saw that a linear function argument can be wrapped in a data
-constructor, if the corresponding constructor argument is also annotated
-with quantity `1`, which means, that a linear argument can never leave
-the linear context. This allows for safe resource handling, as we will
+constructor, if and only if the corresponding constructor argument
+is also annotated with quantity `1`. This means, that a linear argument can never
+leave the linear context. This allows for safe resource handling, as we will
 see below: A linear argument must always be handled properly in its
 linear context, and Idris will not allow us to forget to do that, nor
 will it allow us to distribute the linear argument to several parts of
@@ -164,9 +165,9 @@ our program.
 
 But eventually, we usually want to break out of linearity. For instance,
 when we write an algorithm using a linear mutable array, we want to get
-rid or the array and use the result of the algorithm in other parts of
+rid or the array and use the result of the algorithm freely in other parts of
 our code. To do this - and to make sure our linear resource does *not*
-escape from our algorithms - we need a data type of forced unestrictedness,
+escape from our algorithms - we need a data type of forced unrestrictedness,
 abbreviated `Ur`:
 
 ```idris
@@ -187,19 +188,26 @@ breakout (U v) = (v,v)
 ```
 
 Second, it is not possible to wrap a linear argument in a `Ur`, even
-if the `Ur` itself is later on used in a linear context, unless we
-consume the argument exactly once by pattern matching on it:
+if the `Ur` itself is later on used in a linear context:
 
 ```idris
 failing "Trying to use linear name b in non-linear context"
   unrestrictedBool : Bool -@ Ur Bool
   unrestrictedBool b = U b
-
-
-escape : Bool -@ Ur Bool
-escape True  = U True
-escape False = U False
 ```
+
+However, it is perfectly fine to wrap an unrestricted constructor field
+of a linear argument in a `Ur`:
+
+```idris
+eitherToUr : Either a a -@ Ur a
+eitherToUr (Left x)  = U x
+eitherToUr (Right x) = U x
+```
+
+In the example above, the `Either a a` argument is consumed exactly once
+by pattern matching on it. The values it holds have unrestricted
+quantity, so we are allowed to wrap them in a `Ur`.
 
 Finally, we can always convert a linear function taking an `Ur` argument
 to a non-linear and vice versa (the second conversion would not be
@@ -216,9 +224,9 @@ promote f (U x) = f x
 ## An Implementation of Mutable Arrays
 
 While all of the above is necessary to understand what's going on in
-the code that follow, it might not yet make a lot of sense. It is
-therefore time to start with actual implementation of mutable and
-immutable arrays. First, the primitive stuff:
+the code that follows, it might not yet be clear why all of this is
+needed.. It is therefore time to start with actual implementation of
+mutable and immutable arrays. First, the primitive stuff:
 
 ```idris
 data ArrayData : Type -> Type where [external]
@@ -229,7 +237,7 @@ data ArrayData : Type -> Type where [external]
 ```
 
 Support for working with arrays is built into the compiler directly. To
-be more precise: Into the main code generates like the Chez Scheme racket and
+be more precise: Into the main code generators like the Chez Scheme, Racket and
 node backends. Therefore, functions `prim__newArray` and friends get
 some special treatment by the compiler. If you'd like to learn more,
 have a look at one of the code generators and how it implements
@@ -301,18 +309,18 @@ going via mutable arrays, which we will fill with the correct values.
 For mutable arrays, we define five core functions, from which all others
 can be derived. All of them accept the mutable array as a linear
 argument to make sure it is not freely shared in client code. First,
-there's the function for setting a position in an array to a new value:
+here's the function for setting a position in an array to a new value:
 
 ```idris
 export
-set : Fin n -> a -> MArray n a -@ MArray n a
+set : Fin n -> a -> (1 _ : MArray n a) -> MArray n a
 set m x (MA arr) = MA $ set' (finToNat m) x arr
 ```
 
 It is important to see that this will return a new `MArray` (holding the
-same `ArrayData` internally) to make sure we can continue the array
-in a linear context (the original `MArray` argument has been consumed
-and can no longer be used).
+same `ArrayData` internally) to make sure we can continue using the array
+in a linear context (the original `MArray` argument has been spent
+and can no longer be used because of it being annotated with quantity `1`).
 
 Second, function `get` for accessing a position in a mutable array.
 This is more involved as it will not only have to return to
@@ -345,16 +353,16 @@ This is very important: Since the result type is an `Ur (IArray n a)`, we will
 be able to freely share the resulting immutable array, while we will never
 be able to use the mutable array argument again, because it was of quantity `1`.
 This is the function that allows us to safely break out of the linear
-context, by turning a mutable array into an immutable. It is important to
-understand that the underlying array data `arr` is still the same, and is still
-- in theory - a mutable array. But the functions we defined here will not
+context, by turning a mutable array into an immutable one. It is important to
+understand that the underlying array data `arr` is still the same, and is
+still - in theory - a mutable array. But the functions we defined here will not
 allow client code to extract and mutate this array anymore. All we can do
 now is reading the values it holds by means of function `at`.
 
 
 As an additional pair of utilities, if we don't want to further use the `MArray`,
 we can also safely discard it (we are going to use `discarding` in an example
-below:
+below):
 
 ```idris
 export %inline
@@ -366,8 +374,9 @@ discarding : (1 _ : MArray n a) -> x -> x
 discarding (MA _) x = x
 ```
 
-The last part, and them most complicated to understand, is the function
-to create a new mutable array. Let's try a wrong implementation first:
+The last part, and the most complicated to understand, is the function
+to create (allocate) a new mutable array. Let's write a wrong implementation
+first:
 
 ```idris
 createMutable : (n : Nat) -> a -> MArray n a
@@ -400,7 +409,7 @@ The solution is to enforce that the freshly created `MArray` *must*
 be used in a linear context, that is, in a linear function. And we
 *must* make sure that the `MArray` does not leak out of this linear
 function, even when being wrapped in a deeply nested data type. Here's how
-this works:
+to do this:
 
 ```idris
 export
@@ -427,12 +436,13 @@ countFins : {n : _} -> List (Fin n) -> List (Fin n, Nat)
 ```
 
 We could do this in `O(n*log(n))` time by first sorting the list and
-then counting the occurrences with a simple fold. That would be nice
-and functional and declarative and all the good things. Still, it would
-be slower than necessary, and sometimes, writing programs is all about
-performance. So, instead of sorting the list and folding, we iterate
-over the list once, keeping track of the counts in a mutable
-array.
+then counting the occurrences with a simple fold from the left.
+That would be nice and functional and declarative and all the good things.
+Still, it would be slower than necessary, and sometimes, writing programs
+is all about performance. So, instead of sorting the list and folding,
+we iterate over the list once, keeping track of the counts in a mutable
+array (this is an example of a [radix sort](https://en.wikipedia.org/wiki/Radix_sort)
+that runs in O(n) complexity).
 
 Here's the counting part:
 
@@ -448,15 +458,15 @@ count' (x :: xs) arr =
 ```
 
 We look at the implementation of `toPairs` in a moment. First, note how in
-the implementation of `count'` we are forced to only use every `MArray`
+the implementation of `count'` we are forced to use every `MArray`
 exactly once. After calling `get x arr`, `arr` has been spent, and we must
 no longer use it. Luckily, `get` returns a new `MArray` (internally, this is
-still exactly the same `ArrayData`, so we don't pay anything in terms
-of performance), which we are then forced to use again exactly once.
-And so on.
+exactly the same `ArrayData`, so we don't pay anything in terms
+of performance), which we are then forced to use again exactly once,
+and so on.
 
 This way, the mutable array is threaded linearly through our algorithm, without
-the slightest chance of escaping into the outer world.
+the slightest chance of it escaping into the outer world.
 
 We can finalize our implementation by invoking `alloc`:
 
@@ -471,11 +481,11 @@ type `Fin n`. We could call `weakon` on it, but this would confuse the totality
 checker. That's why we typically need natural numbers for iterating over
 the indices in an array, together with an auto implicit proof that the natural
 number in question is within the valid bounds. The machinery and different
-proof types for this come from module `Data.Array.Index`. Have a look at
-what's available there: It should be reasonably well documented.
+proof types for this come from module `Data.Array.Index`, which should be
+reasonably well documented.
 
 Here's how to collect the elements of an array in a list. Since the
-list is built up from last to first element, we can conveniently use
+list is built from last to first element, we can conveniently use
 a natural number for counting down:
 
 ```idris
@@ -495,7 +505,7 @@ toPairs = ontoPairs [] n
 ```
 
 You can try this at the REPL. Just keep in mind that the primitive operations
-will not reduce at the REPL, so we have to print the result via an
+will not be reduced there, so we have to print the result via an
 `IO` action using `:exec`:
 
 ```repl
