@@ -161,3 +161,14 @@ freezeLTE _ (MA arr) = MkBang $ IA arr
 export %inline
 freeze : MArray n a -@ Ur (IArray n a)
 freeze = freezeLTE n @{reflexive}
+
+||| Safely discard a linear mutable array.
+export %inline
+discard : MArray n a -@ ()
+discard (MA _) = ()
+
+||| Safely discard a linear mutable array, returning a non-linear
+||| result at the same time.
+export %inline
+discarding : (1 _ : MArray n a) -> x -> x
+discarding (MA _) x = x

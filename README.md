@@ -14,7 +14,7 @@ details and documentation):
 * `Data.Array.Index`: Different data types, conversions, and proofs for
   safely accessing the values in an indexed array. The default type to
   use for indexing is `Fin n`, but other types might be better suited
-  for iterating over the values in an array for the left or the right.
+  for iterating over the values in an array from the left or right.
 
 * `Data.Array.Core`: This module holds the core data types and functions
   for working with mutable and immutable arrays. Mutable arrays can be used
@@ -28,3 +28,24 @@ details and documentation):
 
 * `Data.Array.Indexed`: Functions for creating, inspecting, and modifying
   size-indexed immutable arrays.
+
+In addition, there is a [tutorial](docs/src/Linear/Tutorial.md), describing
+in detail some aspects of linear types in Idris and how `Data.Array.Core`
+was implemented.
+
+## Additional Resources
+
+There are not many resources available about linear types in Idris, but there
+are several blog posts, articles, and libraries explaining and using these
+concepts in Haskell. Here is a non-comprehensive selection:
+
+* [Idris2 introduction to linear types](https://idris2.readthedocs.io/en/latest/tutorial/multiplicities.html#linearity):
+  This gives a nice introduction to using linear types for safe resource
+  management in Idris2, a topic which is not being discussed in the
+  tutorial of this library.
+* [linear-base](https://github.com/tweag/linear-base): Some parts of the
+  tutorial were inspired by the examples in this library. A treasure trove
+  of utilities that has been very well documented.
+* [TWEAK blog posts on linear types](https://www.tweag.io/blog/tags/linear-types):
+  Lots of interesting stuff on using linear types in high-performance algorithms
+  and for writing safe resource protocols.
