@@ -28,3 +28,7 @@ details and documentation):
 
 * `Data.Array.Indexed`: Functions for creating, inspecting, and modifying
   size-indexed immutable arrays.
+
+In addition, there is a [tutorial](docs/src/Linear/Tutorial.md), describing
+in detail some aspects of linear types in Idris and how `Data.Array.Core`
+was implemented.
