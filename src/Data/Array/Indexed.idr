@@ -3,6 +3,7 @@ module Data.Array.Indexed
 import public Data.Array.Mutable
 import Data.List
 import Data.Vect
+import Syntax.PreorderReasoning
 
 %default total
 
@@ -351,12 +352,58 @@ mapMaybe = mapMaybeWithKey . const
 --          Concatenating Arrays
 --------------------------------------------------------------------------------
 
+||| Size of the array after concatenating a SnocList of arrays.
+|||
+||| It is easier to implement this and keep the indices correct,
+||| therefore, this is the default for concatenating arrays.
+public export
+SnocSize : SnocList (Array a) -> Nat
+SnocSize [<]           = 0
+SnocSize (xs :< A s _) = SnocSize xs + s
+
+||| Size of the array after concatenating a List of arrays.
+public export
+ListSize : List (Array a) -> Nat
+ListSize = SnocSize . ([<] <><)
+
+-- snocConcat implementation
+sconc :
+     {0 m,n       : Nat}
+  -> (pos         : Nat)
+  -> (cur         : Nat)
+  -> (arr         : IArray m a)
+  -> (arrs        : SnocList (Array a))
+  -> {auto 0 lte1 : LTE pos n}
+  -> {auto 0 lte2 : LTE cur m}
+  -> (1 res       : MArray n a)
+  -> Ur (IArray n a)
+sconc pos   0     _   (sx :< A s arr) res = sconc pos s arr sx res
+sconc (S j) (S k) arr arrs            res =
+  let res' := setNat j (atNat arr k) res
+   in sconc j k arr arrs res'
+sconc _ _ _ _ res = freeze res
+
+||| Concatenate a SnocList of arrays.
+|||
+||| This allocates a large enough array in advance, and therefore runs in
+||| O(SnocSize sa).
+export
+snocConcat : (sa : SnocList (Array a)) -> IArray (SnocSize sa) a
+snocConcat [<]                 = empty
+snocConcat (sa :< A 0 _)       =
+  rewrite plusZeroRightNeutral (SnocSize sa) in snocConcat sa
+snocConcat (sa :< A (S k) arr) with (SnocSize sa + S k)
+  _ | n = unrestricted $ alloc n (at arr 0) (sconc n (S k) arr sa)
+
+||| Concatenate a List of arrays.
+|||
+||| This allocates a large enough array in advance, and therefore runs in
+||| O(ListSize as).
+export
+listConcat : (as : List (Array a)) -> IArray (ListSize as) a
+listConcat as = snocConcat ([<] <>< as)
+
 ||| Concatenate two arrays in O(m+n) runtime.
 export
 append : {m,n : Nat} -> IArray m a -> IArray n a -> IArray (m + n) a
-append {m = 0}   a1 a2 = a2
-append {m = S v} a1 a2 = generate (S v + n) $ \x => case tryFinToFin {k = S v} x of
-  Just y  => at a1 y
-  Nothing => case tryNatToFin {k = n} (finToNat x `minus` S v) of
-    Just y  => at a2 y
-    Nothing => at a1 0
+append xs ys = snocConcat [<A m xs, A n ys]

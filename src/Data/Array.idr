@@ -46,17 +46,37 @@ export
 Monoid (Array a) where
   neutral = A 0 empty
 
+bind : Array a -> (a -> Array b) -> Array b
+bind x f =
+  let sb := foldl (\sa,v => sa :< f v) [<] x
+   in A (SnocSize sb) (snocConcat sb)
+
+export
+Applicative Array where
+  pure v = A 1 $ fill 1 v
+  af <*> av = bind af (\fun => map fun av)
+
+export
+Monad Array where
+  (>>=) = bind
+
+export
+Alternative Array where
+  empty = A 0 empty
+  A 0 _ <|> ys = ys
+  xs    <|> _  = xs
+
 --------------------------------------------------------------------------------
 --          Initializing Arrays
 --------------------------------------------------------------------------------
 
-export
-empty : Array a
-empty = A 0 empty
-
 export %inline
 fromList : (ls : List a) -> Array a
 fromList ls = A _ $ arrayL ls
+
+export %inline
+fill : (n : Nat) -> a -> Array a
+fill n v = A n $ fill n v
 
 export %inline
 generate : (n : Nat) -> (Fin n -> a) -> Array a
