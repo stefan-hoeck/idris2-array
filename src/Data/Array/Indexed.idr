@@ -60,6 +60,11 @@ revArray : {n : _} -> Vect n a -> IArray n a
 revArray []        = empty
 revArray (x :: xs) = unrestricted $ allocRevVect (x::xs) freeze
 
+||| Fill an immutable array of the given size with the given value
+export
+fill : (n : Nat) -> a -> IArray n a
+fill n v = unrestricted $ alloc n v freeze
+
 ||| Generate an immutable array of the given size using
 ||| the given iteration function.
 export
@@ -217,6 +222,15 @@ export %inline
 export %inline
 {n : Nat} -> Functor (IArray n) where
   map f arr = generate n (f . at arr)
+
+export
+{n : Nat} -> Applicative (IArray n) where
+  pure = fill n
+  af <*> av = generate n (\x => at af x (at av x))
+
+export
+{n : Nat} -> Monad (IArray n) where
+  arr >>= f = generate n (\x => at (f $ at arr x) x)
 
 export
 {n : Nat} -> Show a => Show (IArray n a) where
