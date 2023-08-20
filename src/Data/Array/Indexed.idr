@@ -252,14 +252,14 @@ mapWithIndex f arr = generate n (\x => f x (at arr x))
 ||| This will have to copy the whol array, so it runs in O(n).
 export
 updateAt : {n : _} -> Fin n -> (a -> a) -> IArray n a -> IArray n a
-updateAt x f = mapWithIndex (\k,v => if heqFin x k then f v else v)
+updateAt x f = mapWithIndex (\k,v => if x == k then f v else v)
 
 ||| Set a single position in an array.
 |||
 ||| This will have to copy the whol array, so it runs in O(n).
 export
 setAt : {n : _} -> Fin n -> a -> IArray n a -> IArray n a
-setAt x y = mapWithIndex (\k,v => if heqFin x k then y else v)
+setAt x y = mapWithIndex (\k,v => if x == k then y else v)
 
 --------------------------------------------------------------------------------
 --          Traversals
