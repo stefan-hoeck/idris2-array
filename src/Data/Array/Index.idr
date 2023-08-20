@@ -40,16 +40,6 @@ import public Data.Nat
 
 %default total
 
--- TODO: Use `Ord` on `Fin` once #3007 got accepted
-public export %inline
-compFin : Fin m -> Fin n -> Ordering
-compFin x y = compare (finToNat x) (finToNat y)
-
--- TODO: Use `Eq` on `Fin` once #3007 got accepted
-public export %inline
-heqFin : Fin m -> Fin n -> Bool
-heqFin x y = finToNat x == finToNat y
-
 export
 0 ltLemma : (0 k,m,n : Nat) -> k + S m === n -> LT k n
 ltLemma 0     m (S m) Refl = %search
