@@ -58,10 +58,10 @@ prop_fin_equals = property $ do
   heqFin (last {n}) (last {n}) === True
 
 -- Verifies that `(<)` for `Fin n` runs in O(1)
--- prop_fin_lt : Property
--- prop_fin_lt = property $ do
---   n <- forAllNats
---   (last {n} < last {n}) === False
+prop_fin_lt : Property
+prop_fin_lt = property $ do
+  n <- forAllNats
+  (last {n} < last {n}) === False
 
 -- Verifies that `compare` for `Fin n` runs in O(1)
 prop_fin_compare : Property
@@ -84,7 +84,7 @@ props = MkGroup "Index"
   , ("prop_weakenRoundTrip", prop_weakenRoundTrip)
   , ("prop_weakenNRoundTrip", prop_weakenNRoundTrip)
   , ("prop_fin_equals", prop_fin_equals)
---  , ("prop_fin_lt", prop_fin_lt)
+  , ("prop_fin_lt", prop_fin_lt)
   , ("prop_fin_compare", prop_fin_compare)
   , ("prop_last_roundtrip", prop_last_roundtrip)
   ]

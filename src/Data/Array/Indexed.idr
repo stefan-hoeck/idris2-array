@@ -97,6 +97,7 @@ force arr = generate n (at arr)
 export
 hcomp : {m,n : Nat} -> Ord a => IArray m a -> IArray n a -> Ordering
 hcomp a1 a2 = go m n
+
   where
     go : (k,l : Nat) -> {auto _ : Ix k m} -> {auto _ : Ix l n} -> Ordering
     go 0     0     = EQ
@@ -110,6 +111,7 @@ hcomp a1 a2 = go m n
 export
 heq : {m,n : Nat} -> Eq a => IArray m a -> IArray n a -> Bool
 heq a1 a2 = go m n
+
   where
     go : (k,l : Nat) -> {auto _ : Ix k m} -> {auto _ : Ix l n} -> Bool
     go 0     0     = True
@@ -119,6 +121,7 @@ heq a1 a2 = go m n
 export
 {n : Nat} -> Eq a => Eq (IArray n a) where
   a1 == a2 = go n
+
     where
       go : (k : Nat) -> {auto 0 _ : LTE k n} -> Bool
       go 0     = True
@@ -127,6 +130,7 @@ export
 export
 {n : Nat} -> Ord a => Ord (IArray n a) where
   compare a1 a2 = go n
+
     where
       go : (k : Nat) -> {auto _ : Ix k n} -> Ordering
       go 0     = EQ
@@ -296,6 +300,7 @@ filterWithKey :
   -> IArray n a
   -> Array a
 filterWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
+
   where
     go :
          (cur,x : Nat)
@@ -326,6 +331,7 @@ mapMaybeWithKey :
   -> IArray n a
   -> Array b
 mapMaybeWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
+
   where
     go :
          (cur,x : Nat)
