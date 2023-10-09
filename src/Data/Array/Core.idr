@@ -2,7 +2,7 @@
 ||| mutable (linear) arrays.
 module Data.Array.Core
 
-import public Data.Linear
+import Data.Linear
 import public Data.Fin
 import public Data.Nat
 
