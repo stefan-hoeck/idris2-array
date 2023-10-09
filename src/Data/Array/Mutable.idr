@@ -1,5 +1,6 @@
 module Data.Array.Mutable
 
+import public Data.Linear
 import public Data.Array.Core
 import public Data.Array.Index
 import Data.List
