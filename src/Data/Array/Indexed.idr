@@ -1,6 +1,6 @@
 module Data.Array.Indexed
 
-import public Data.Array.Mutable
+import Data.Array.Mutable
 import Data.List
 import Data.Vect
 import Syntax.PreorderReasoning
