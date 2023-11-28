@@ -84,7 +84,7 @@ another function:
 
 ```idris
 failing "Trying to use linear name b in non-linear context"
-  not1 : (1 b : Bool) -> Nat
+  not1 : (1 b : Bool) -> Bool
   not1 b = not b
 ```
 
@@ -477,7 +477,7 @@ countFins xs = unrestricted $ alloc n 0 (count' xs)
 Now, extracting the values in an array requires iterating over the array's
 indices. `Fin n` is not very well suited to do this, because when we
 pattern match on a `Fin (S n)`, in case of an `FS x`, the wrapped `x` is of
-type `Fin n`. We could call `weakon` on it, but this would confuse the totality
+type `Fin n`. We could call `weaken` on it, but this would confuse the totality
 checker. That's why we typically need natural numbers for iterating over
 the indices in an array, together with an auto implicit proof that the natural
 number in question is within the valid bounds. The machinery and different
