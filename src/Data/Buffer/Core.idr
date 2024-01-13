@@ -75,6 +75,14 @@ export
 unsafeGetBuffer : IBuffer n -> Buffer
 unsafeGetBuffer (IB buf) = buf
 
+||| Wrappes a bare mutable buffer in an `IBuffer`.
+|||
+||| Client code is responsible to make sure the original buffer is no longer
+||| used.
+export
+unsafeMakeBuffer : Buffer -> IBuffer k
+unsafeMakeBuffer = IB
+
 --------------------------------------------------------------------------------
 --          Mutable Byte Arrays
 --------------------------------------------------------------------------------
