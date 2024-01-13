@@ -1,5 +1,6 @@
 module Data.Buffer.Indexed
 
+import public Data.Array.Index
 import public Data.Array.Indexed
 import Data.Buffer.Mutable
 import Data.List
@@ -170,68 +171,89 @@ export %inline
 toVectWithIndex : {n : _} -> IBuffer n -> Vect n (Fin n, Bits8)
 toVectWithIndex = ontoVectWithIndex [] n
 
-||| Right fold over the values of a byte array plus their indices.
-export
-foldr :
+foldr_ :
      (m : Nat)
   -> {auto 0 _ : LTE m n}
   -> (Bits8 -> a -> a)
   -> a
   -> IBuffer n
   -> a
-foldr 0     _ x arr = x
-foldr (S k) f x arr = foldr k f (f (atNat arr k) x) arr
+foldr_ 0     _ x arr = x
+foldr_ (S k) f x arr = foldr_ k f (f (atNat arr k) x) arr
 
 ||| Right fold over the values of a byte array plus their indices.
-export
-foldrKV :
+export %inline
+foldr : {n : _} -> (Bits8 -> a -> a) -> a -> IBuffer n -> a
+foldr = foldr_ n
+
+export %inline
+toList : {n : _} -> IBuffer n -> List Bits8
+toList = foldr (::) Nil
+
+foldrKV_ :
      (m : Nat)
   -> {auto 0 prf : LTE m n}
   -> (Fin n -> Bits8 -> a -> a)
   -> a
   -> IBuffer n
   -> a
-foldrKV 0     _ x arr = x
-foldrKV (S k) f x arr =
-  let fin := natToFinLT k @{prf} in foldrKV k f (f fin (at arr fin) x) arr
+foldrKV_ 0     _ x arr = x
+foldrKV_ (S k) f x arr =
+  let fin := natToFinLT k @{prf} in foldrKV_ k f (f fin (at arr fin) x) arr
 
-||| Left fold over the values of a byte array.
-export
-foldl :
+||| Right fold over the values of a byte array plus their indices.
+export %inline
+foldrKV : {n : _} -> (Fin n -> Bits8 -> a -> a) -> a -> IBuffer n -> a
+foldrKV = foldrKV_ n
+
+foldl_ :
      (m : Nat)
   -> {auto x : Ix m n}
   -> (a -> Bits8 -> a)
   -> a
   -> IBuffer n
   -> a
-foldl 0     _ v arr = v
-foldl (S k) f v arr = foldl k f (f v (ix arr k)) arr
+foldl_ 0     _ v arr = v
+foldl_ (S k) f v arr = foldl_ k f (f v (ix arr k)) arr
 
-||| Left fold over the values of a byte array plus their indices.
-export
-foldlKV :
+||| Left fold over the values of a byte array.
+export %inline
+foldl : {n : _} -> (a -> Bits8 -> a) -> a -> IBuffer n -> a
+foldl = foldl_ n
+
+export %inline
+toSnocList : {n : _} -> IBuffer n -> SnocList Bits8
+toSnocList = foldl (:<) Lin
+
+foldlKV_ :
      (m : Nat)
   -> {auto x : Ix m n}
   -> (Fin n -> a -> Bits8 -> a)
   -> a
   -> IBuffer n
   -> a
-foldlKV 0     _ v arr = v
-foldlKV (S k) f v arr =
-  let fin := ixToFin x in foldlKV k f (f fin v (at arr fin)) arr
+foldlKV_ 0     _ v arr = v
+foldlKV_ (S k) f v arr =
+  let fin := ixToFin x in foldlKV_ k f (f fin v (at arr fin)) arr
+
+||| Left fold over the values of a byte array plus their indices.
+export %inline
+foldlKV : {n : _} -> (Fin n -> a -> Bits8 -> a) -> a -> IBuffer n -> a
+foldlKV = foldlKV_ n
 
 export
 {n : Nat} -> Show (IBuffer n) where
   showPrec p arr = showCon p "buffer" (showArg $ ontoList [] n arr)
 
 ||| Mapping over the values of an array together with their indices.
-export
-mapWithIndex :
-     {n : _}
-  -> (Fin n -> Bits8 -> Bits8)
-  -> IBuffer n
-  -> IBuffer n
+export %inline
+mapWithIndex : {n : _} -> (Fin n -> Bits8 -> Bits8) -> IBuffer n -> IBuffer n
 mapWithIndex f arr = generate n (\x => f x (at arr x))
+
+||| Mapping over the values of an array together with their indices.
+export %inline
+map : {n : _} -> (Bits8 -> Bits8) -> IBuffer n -> IBuffer n
+map f arr = generate n (f . at arr)
 
 ||| Update a single position in an array by applying the given
 ||| function.

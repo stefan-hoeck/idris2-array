@@ -1,6 +1,7 @@
 module Main
 
 import Array
+import Buffer
 import Index
 import Hedgehog
 
@@ -10,4 +11,5 @@ main : IO ()
 main = test
   [ Array.props
   , Index.props
+  , Buffer.props
   ]

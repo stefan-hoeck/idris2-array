@@ -192,7 +192,7 @@ iterateFrom :
   -@ MBuffer n
 iterateFrom 0     f v buf = buf
 iterateFrom (S k) f v buf =
-  let buf' := setIx k v buf in iterateFrom k f v buf'
+  let buf' := setIx k v buf in iterateFrom k f (f v) buf'
 
 ||| Allocate an new byte array filled with the values by applying
 ||| the given function repeatedly to its argument.
