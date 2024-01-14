@@ -299,6 +299,7 @@ traverse = traverseWithIndex . const
 --          Concatenation
 --------------------------------------------------------------------------------
 
+||| Concatenate two byte arrays. TODO: Test this
 export
 append : {m,n : _} -> IBuffer m -> IBuffer n -> IBuffer (m + n)
 append src1 src2 =

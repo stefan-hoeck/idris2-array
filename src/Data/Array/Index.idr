@@ -35,6 +35,7 @@
 ||| example how this is used.
 module Data.Array.Index
 
+import public Data.DPair
 import public Data.Fin
 import public Data.Nat
 
@@ -154,6 +155,34 @@ ixToFin : Ix (S m) n -> Fin n
 ixToFin x = natToFinLT (ixToNat x) @{ixLT x}
 
 --------------------------------------------------------------------------------
+--          Sublength
+--------------------------------------------------------------------------------
+
+export
+0 finToNatLT : (x : Fin n) -> LT (finToNat x) n
+finToNatLT FZ     = %search
+finToNatLT (FS x) = LTESucc $ finToNatLT x
+
+||| This type is used to cut off a portion of
+||| a `ByteString`. It must be no larger than the number
+||| of elements in the ByteString
+public export
+0 SubLength : Nat -> Type
+SubLength n = Subset Nat (`LTE` n)
+
+export %inline
+sublength : (k : Nat) -> (0 lte : LTE k n) => SubLength n
+sublength k = Element k lte
+
+export %inline
+fromFin : Fin n -> SubLength n
+fromFin x = Element (finToNat x) (lteSuccLeft $ finToNatLT x)
+
+export %inline
+fromIx : Ix m n -> SubLength n
+fromIx x = Element (ixToNat x) (ixLTE x)
+
+--------------------------------------------------------------------------------
 --          Hints
 --------------------------------------------------------------------------------
 
@@ -205,3 +234,9 @@ tryNatToFin n with (n < k) proof eq
 export %inline
 tryFinToFin : {k : _} -> Fin n -> Maybe (Fin k)
 tryFinToFin = tryNatToFin . finToNat
+
+export
+0 minusFinLT : (n : Nat) -> (x : Fin n) -> LT (n `minus` S (finToNat x)) n
+minusFinLT (S k) FZ = ?minusFinLT_rhs_0
+minusFinLT (S k) (FS x) = ?minusFinLT_rhs_1
+
