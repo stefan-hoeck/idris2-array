@@ -29,7 +29,7 @@ prim__newBuf : Bits32 -> Buffer
 prim__getString : Buffer -> (offset,len : Integer) -> String
 
 %foreign "scheme:blodwen-buffer-copydata"
-         "node:lambda:(b1,o1,length,b2,o2)=>b1.copy(Number(b2),Number(o2),Number(o1),Number(o1+length))"
+         "node:lambda:(b1,o1,length,b2,o2)=>b1.copy(b2,Number(o2),Number(o1),Number(o1+length))"
 prim__copy : (src : Buffer) -> (srcOffset, len : Integer) ->
              (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
 

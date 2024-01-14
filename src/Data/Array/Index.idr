@@ -223,6 +223,12 @@ eqOpReflectsEquals (S k) 0     prf impossible
 --          Proofs
 --------------------------------------------------------------------------------
 
+export
+0 tryLTE : {n : _} -> (k : Nat) -> Maybe (LT k n)
+tryLTE k with (k < n) proof eq
+  _ | True  = Just $ ltOpReflectsLT k n eq
+  _ | False = Nothing
+
 ||| Tries to convert a natural number to a `Fin k`.
 export
 tryNatToFin : {k : _} -> Nat -> Maybe (Fin k)
@@ -239,4 +245,3 @@ export
 0 minusFinLT : (n : Nat) -> (x : Fin n) -> LT (n `minus` S (finToNat x)) n
 minusFinLT (S k) FZ = ?minusFinLT_rhs_0
 minusFinLT (S k) (FS x) = ?minusFinLT_rhs_1
-
