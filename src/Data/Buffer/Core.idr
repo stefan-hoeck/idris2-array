@@ -66,6 +66,14 @@ export
 take : (0 m : Nat) -> IBuffer n -> {auto 0 lte : LTE m n} -> IBuffer m
 take _ (IB buf) = IB buf
 
+||| Convert an UTF-8 string to a buffer
+export
+fromString : (s : String) -> IBuffer (cast $ stringByteLength s)
+fromString s =
+  let buf            := prim__newBuf (cast $ stringByteLength s)
+      MkIORes () w2  := toPrim (setString buf 0 s) %MkWorld
+   in destroy w2 (IB buf)
+
 ||| Extracts the inner buffer held by a byte array without copying.
 |||
 ||| This allows us to write efficiently write the data to a file
