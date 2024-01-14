@@ -6,6 +6,8 @@ import Data.Array.Core
 import public Data.Fin
 import public Data.Nat
 
+import System.File
+
 %default total
 
 --------------------------------------------------------------------------------
@@ -210,3 +212,47 @@ discarding (MB _) x = x
 export %inline
 toIO : MBuffer n -@ Ur (IO Buffer)
 toIO (MB buf) = MkBang (pure buf)
+
+--------------------------------------------------------------------------------
+--          Reading and Writing Files
+--------------------------------------------------------------------------------
+
+||| Read up to `n` bytes from a file into an immutable buffer.
+export
+readIBuffer :
+     {auto has : HasIO io}
+  -> Nat
+  -> File
+  -> io (Either FileError (n ** IBuffer n))
+readIBuffer max f =
+  let buf  := prim__newBuf (cast max)
+   in do
+    Right r <- readBufferData f buf 0 (cast max) | Left x => pure (Left x)
+    if r >= 0
+       then pure (Right (cast r ** IB buf))
+       else pure (Left FileReadError)
+
+||| Write up to `len` bytes from a buffer to a file, starting
+||| at the given offset.
+export
+writeIBuffer :
+     {auto has : HasIO io}
+  -> File
+  -> (offset,len : Nat)
+  -> IBuffer n
+  -> {auto 0 prf : LTE (offset + len) n}
+  -> io (Either (FileError,Int) ())
+writeIBuffer h o s (IB buf) = writeBufferData h buf (cast o) (cast s)
+
+||| Write up to `len` bytes from a buffer to a file, starting
+||| at the given offset.
+export
+writeMBuffer :
+     {auto has : HasIO io}
+  -> File
+  -> (offset,len : Nat)
+  -> {auto 0 prf : LTE (offset + len) n}
+  -> MBuffer n
+  -@ Ur (io (Either (FileError,Int) ()))
+writeMBuffer h o s (MB buf) =
+  MkBang $ writeBufferData h buf (cast o) (cast s)
