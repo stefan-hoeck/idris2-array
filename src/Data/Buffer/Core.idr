@@ -204,3 +204,9 @@ discard (MB _) = ()
 export %inline
 discarding : (1 _ : MBuffer n) -> x -> x
 discarding (MB _) x = x
+
+||| Release a mutable linear buffer to `IO`, thus making it freely
+||| shareable.
+export %inline
+toIO : MBuffer n -@ Ur (IO Buffer)
+toIO (MB buf) = MkBang (pure buf)
