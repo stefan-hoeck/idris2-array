@@ -294,3 +294,15 @@ traverse :
   -> IBuffer n
   -> f (IBuffer n)
 traverse = traverseWithIndex . const
+
+--------------------------------------------------------------------------------
+--          Concatenation
+--------------------------------------------------------------------------------
+
+export
+append : {m,n : _} -> IBuffer m -> IBuffer n -> IBuffer (m + n)
+append src1 src2 =
+  unrestricted $ Buffer.Core.alloc (m+n) $ \b1 =>
+    let b2 := copy src1 0 0 m @{reflexive} @{lteAddRight _} b1
+        b3 := copy src2 0 m n @{reflexive} @{reflexive} b2
+     in freeze b3

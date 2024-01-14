@@ -121,14 +121,15 @@ alloc n f = f (MB $ prim__newBuf (cast n))
 export
 copy :
      IBuffer m
-  -> (o1,o2 : Nat)
+  -> (srcOffset,dstOffset : Nat)
   -> (len : Nat)
-  -> {auto 0 p1 : LTE (o1 + len) m}
-  -> {auto 0 p2 : LTE (o2 + len) n}
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
   -> MBuffer n
   -@ MBuffer n
-copy (IB src) o1 o2 len (MB dst) =
-  let MkIORes () w2 := prim__copy src (cast o1) (cast len) dst (cast o2) %MkWorld
+copy (IB src) srcOffset dstOffset len (MB dst) =
+  let MkIORes () w2 :=
+        prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) %MkWorld
    in destroy w2 (MB dst)
 
 ||| Copy the content of an immutable buffer to a new buffer.
