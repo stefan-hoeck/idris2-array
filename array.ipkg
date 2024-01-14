@@ -12,4 +12,8 @@ modules    = Data.Array.Core
            , Data.Array.Mutable
            , Data.Array
 
+           , Data.Buffer.Core
+           , Data.Buffer.Indexed
+           , Data.Buffer.Mutable
+
 sourcedir  = "src"
