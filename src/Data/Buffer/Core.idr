@@ -75,6 +75,7 @@ fromString s =
    in destroy w2 (IB buf)
 
 ||| Convert a section of a byte array to an UTF-8 string.
+||| TODO: Test from/to String
 export
 toString : IBuffer n -> (off,len : Nat) -> (0 _ : LTE (off + len) n) => String
 toString (IB buf) off len = prim__getString buf (cast off) (cast len)
@@ -117,13 +118,26 @@ export
 alloc : (n : Nat) -> (1 fun : MBuffer n -@ Ur b) -> Ur b
 alloc n f = f (MB $ prim__newBuf (cast n))
 
+export
+copy :
+     IBuffer m
+  -> (o1,o2 : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (o1 + len) m}
+  -> {auto 0 p2 : LTE (o2 + len) n}
+  -> MBuffer n
+  -@ MBuffer n
+copy (IB src) o1 o2 len (MB dst) =
+  let MkIORes () w2 := prim__copy src (cast o1) (cast len) dst (cast o2) %MkWorld
+   in destroy w2 (MB dst)
+
 ||| Copy the content of an immutable buffer to a new buffer.
 export
 thaw : {n : _} -> IBuffer n -> (1 fun : MBuffer n -@ Ur b) -> Ur b
-thaw (IB buf) f =
-  let buf2 := prim__newBuf (cast n)
-      MkIORes () w2 := prim__copy buf2 0 (cast n) buf 0 %MkWorld
-   in destroy w2 (f $ MB buf2)
+thaw src f =
+  alloc n $ \b =>
+    let b2 := copy src 0 0 n @{reflexive} @{reflexive} b
+     in f b2
 
 ||| Safely write a value to a mutable byte array.
 |||
