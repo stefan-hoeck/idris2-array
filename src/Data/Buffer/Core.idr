@@ -74,6 +74,11 @@ fromString s =
       MkIORes () w2  := toPrim (setString buf 0 s) %MkWorld
    in destroy w2 (IB buf)
 
+||| Convert a section of a byte array to an UTF-8 string.
+export
+toString : IBuffer n -> (off,len : Nat) -> (0 _ : LTE (off + len) n) => String
+toString (IB buf) off len = prim__getString buf (cast off) (cast len)
+
 ||| Extracts the inner buffer held by a byte array without copying.
 |||
 ||| This allows us to write efficiently write the data to a file
