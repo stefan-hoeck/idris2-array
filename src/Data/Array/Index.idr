@@ -242,6 +242,12 @@ tryFinToFin : {k : _} -> Fin n -> Maybe (Fin k)
 tryFinToFin = tryNatToFin . finToNat
 
 export
+0 minusLTE : (k,m : Nat) -> LTE (k `minus` m) k
+minusLTE 0     m     = LTEZero
+minusLTE (S k) 0     = reflexive
+minusLTE (S k) (S j) = lteSuccRight $ minusLTE k j
+
+export
 0 minusFinLT : (n : Nat) -> (x : Fin n) -> LT (n `minus` S (finToNat x)) n
-minusFinLT (S k) FZ = ?minusFinLT_rhs_0
-minusFinLT (S k) (FS x) = ?minusFinLT_rhs_1
+minusFinLT (S k) FZ = LTESucc (minusLTE k 0)
+minusFinLT (S k) (FS x) = LTESucc (minusLTE k _)
