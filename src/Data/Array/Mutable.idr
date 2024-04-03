@@ -194,3 +194,85 @@ allocIter :
   -> (MArray n a -@ Ur b)
   -@ Ur b
 allocIter (S k) f v g = alloc (S k) v (g . iterateFrom k f (f v))
+
+--------------------------------------------------------------------------------
+-- Linear Utilities
+--------------------------------------------------------------------------------
+
+||| Filter a list via a linear function.
+export
+filterLin : (a -> m -@ CRes Bool m) -> List a -> m -@ CRes (List a) m
+filterLin f vs = go [<] vs
+  where
+    go : SnocList a -> List a -> m -@ CRes (List a) m
+    go sv [] m = (sv <>> []) # m
+    go sv (h::t) m =
+      let True # m2 := f h m | _ # m2 => go sv t m2
+       in go (sv :< h) t m2
+
+||| Map a list via a linear function.
+export
+mapLin : (a -> m -@ CRes b m) -> List a -> m -@ CRes (List b) m
+mapLin f vs = go [<] vs
+  where
+    go : SnocList b -> List a -> m -@ CRes (List b) m
+    go sv [] m = (sv <>> []) # m
+    go sv (h::t) m = let v # m2 := f h m in go (sv :< v) t m2
+
+||| Map and filter a list via a linear function.
+export
+mapMaybeLin : (a -> m -@ CRes (Maybe b) m) -> List a -> m -@ CRes (List b) m
+mapMaybeLin f vs = go [<] vs
+  where
+    go : SnocList b -> List a -> m -@ CRes (List b) m
+    go sv [] m = (sv <>> []) # m
+    go sv (h::t) m =
+      let Just v # m2 := f h m | _ # m2 => go sv t m2
+       in go (sv :< v) t m2
+
+||| Accumulate the values stored in a mutable, linear array.
+export
+foldrLin : {k : _} -> (e -> a -> a) -> a -> MArray k e -@ CRes a (MArray k e)
+foldrLin f = go k
+  where
+    go : (n : Nat) -> (0 lt : LTE n k) => a -> MArray k e -@ CRes a (MArray k e)
+    go 0     v m = v # m
+    go (S k) v m = let el # m2 := getNat k m in go k (f el v) m2
+
+||| Store the values in a linear array in a `Vect` of the same size.
+export
+toVect : {k : _} -> MArray k a -@ CRes (Vect k a) (MArray k a)
+toVect = go [] k
+  where
+    go :
+         Vect m a
+      -> (n : Nat)
+      -> {auto 0 lt : LTE n k}
+      -> MArray k a
+      -@ CRes (Vect (m+n) a) (MArray k a)
+    go vs 0     arr = rewrite plusCommutative m 0 in vs # arr
+    go vs (S x) arr =
+      let v # arr2 := getNat x arr
+       in rewrite sym (plusSuccRightSucc m x) in go (v::vs) x arr2
+
+||| Extract and convert the values stored in a linear array
+||| and store them in a `Vect` of the same size.
+export
+toVectWith :
+     {k : _}
+  -> (Fin k -> a -> b)
+  -> MArray k a
+  -@ CRes (Vect k b) (MArray k a)
+toVectWith f = go [] k
+  where
+    go :
+         Vect m b
+      -> (n : Nat)
+      -> {auto 0 lt : LTE n k}
+      -> MArray k a
+      -@ CRes (Vect (m+n) b) (MArray k a)
+    go vs 0     arr = rewrite plusCommutative m 0 in vs # arr
+    go vs (S x) arr =
+      let v # arr2 := getNat x arr
+          vb       := f (natToFinLT x) v
+       in rewrite sym (plusSuccRightSucc m x) in go (vb::vs) x arr2
