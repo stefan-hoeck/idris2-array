@@ -54,7 +54,7 @@ array (x :: xs) = unrestricted $ allocVect (x::xs) freeze
 ||| Copy the values in a vector to an array of the same length
 ||| in reverse order.
 |||
-||| This is useful the values in the array have been collected
+||| This is useful if the values in the array have been collected
 ||| from tail to head for instance when parsing some data.
 export
 revArray : {n : _} -> Vect n a -> IArray n a
@@ -88,6 +88,19 @@ iterate (S k) f v = unrestricted $ allocIter (S k) f v freeze
 export
 force : {n : _} -> IArray n a -> IArray n a
 force arr = generate n (at arr)
+
+||| Allocate an array, fill it with the given default value, and use a list
+||| of pairs to replace specific positions.
+export
+fromPairs : (n : Nat) -> a -> List (Nat,a) -> IArray n a
+fromPairs n v ps = unrestricted $ alloc n v (go ps)
+  where
+    go : List (Nat,a) -> MArray n a -@ Ur (IArray n a)
+    go []            m = freeze m
+    go ((x,v) :: xs) m =
+      case tryNatToFin x of
+        Just y  => go xs (set y v m)
+        Nothing => go xs m
 
 --------------------------------------------------------------------------------
 --          Eq and Ord
