@@ -251,3 +251,31 @@ export
 0 minusFinLT : (n : Nat) -> (x : Fin n) -> LT (n `minus` S (finToNat x)) n
 minusFinLT (S k) FZ = LTESucc (minusLTE k 0)
 minusFinLT (S k) (FS x) = LTESucc (minusLTE k _)
+
+--------------------------------------------------------------------------------
+--          Relations
+--------------------------------------------------------------------------------
+
+||| `Suffix` is a reflexive and transitive relation.
+|||
+||| Performance: This is integer addition at runtime.
+public export
+trans : Ix k m -> Ix m n -> Ix k n
+trans IZ y     = y
+trans (IS x) t = IS $ trans x t
+
+%inline
+transp : Ix k m -> Ix m n -> Ix k n
+transp x y =  believe_me (ixToNat x + ixToNat y)
+
+%transform "ixTransPlus" Index.trans = Index.transp
+
+||| `Ix` is a reflexive relation on natural numbers.
+public export %inline
+Reflexive Nat Ix where
+  reflexive = IZ
+
+||| `Ix` is a transitive relation on natural numbers.
+public export %inline
+Transitive Nat Ix where
+  transitive = trans
