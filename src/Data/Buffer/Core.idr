@@ -1,7 +1,7 @@
 module Data.Buffer.Core
 
 import Data.Buffer
-import Data.Linear
+import Data.Linear.Token
 import Data.Array.Core
 import public Data.Fin
 import public Data.Nat
@@ -40,11 +40,6 @@ prim__copy : (src : Buffer) -> (srcOffset, len : Integer) ->
 
 destroy : (1 _ : %World) -> (1 _ : a) -> a
 destroy %MkWorld x = x
-
-set' : (o : Nat) -> Bits8 -> Buffer -> Buffer
-set' o v buf =
-  let MkIORes () w2 := prim__setByte buf (cast o) v %MkWorld
-   in destroy w2 buf
 
 --------------------------------------------------------------------------------
 --          Immutable Buffers
@@ -112,6 +107,10 @@ record MBuffer (n : Nat) where
   constructor MB
   buf : Buffer
 
+public export
+0 WithMBuffer : Nat -> (a : Type) -> Type
+WithMBuffer n a = (s : MBuffer n) => (1 t : T1 s) -> Ur a
+
 ||| Allocate and release a mutable byte array in a linear context.
 |||
 ||| Function `fun` must use the given array exactly once, while
@@ -120,8 +119,8 @@ record MBuffer (n : Nat) where
 ||| that the result `b` does not hold a reference to the mutable
 ||| array.
 export
-alloc : (n : Nat) -> (1 fun : MBuffer n -@ Ur b) -> Ur b
-alloc n f = f (MB $ prim__newBuf (cast n))
+alloc : (n : Nat) -> (1 fun : WithMBuffer n a) -> Ur a
+alloc n f = f @{MB $ prim__newBuf (cast n)} (MkT1 %MkWorld)
 
 export
 copy :
@@ -130,16 +129,17 @@ copy :
   -> (len : Nat)
   -> {auto 0 p1 : LTE (srcOffset + len) m}
   -> {auto 0 p2 : LTE (dstOffset + len) n}
-  -> MBuffer n
-  -@ MBuffer n
-copy (IB src) srcOffset dstOffset len (MB dst) =
-  let MkIORes () w2 :=
-        prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) %MkWorld
-   in destroy w2 (MB dst)
+  -> {auto s : MBuffer n}
+  -> F1' s
+copy (IB src) srcOffset dstOffset len (MkT1 w) =
+  let MB dst        := s
+      MkIORes () w2 :=
+        prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) w
+   in MkT1 w2
 
 ||| Copy the content of an immutable buffer to a new buffer.
 export
-thaw : {n : _} -> IBuffer n -> (1 fun : MBuffer n -@ Ur b) -> Ur b
+thaw : {n : _} -> IBuffer n -> (1 fun : WithMBuffer n b) -> Ur b
 thaw src f =
   alloc n $ \b =>
     let b2 := copy src 0 0 n @{reflexive} @{reflexive} b
@@ -151,8 +151,10 @@ thaw src f =
 ||| same array wrapped in a new `MB`) must be returned, which will
 ||| then again be used exactly once.
 export
-set : Fin n -> Bits8 -> MBuffer n -@ MBuffer n
-set m x (MB buf) = MB $ set' (finToNat m) x buf
+set : (s : MBuffer n) => Fin n -> Bits8 -> F1' s
+set @{MB buf} o x (MkT1 w) =
+  let MkIORes () w2 := Core.prim__setByte buf (cast $ finToNat o) x w
+   in MkT1 w2
 
 ||| Safely read a value from a mutable byte array.
 |||
@@ -161,8 +163,8 @@ set m x (MB buf) = MB $ set' (finToNat m) x buf
 ||| linear context. See implementation notes on `set` about some details,
 ||| how this works.
 export
-get : Fin n -> MBuffer n -@ CRes Bits8 (MBuffer n)
-get m (MB buf) = prim__getByte buf (cast $ finToNat m) # MB buf
+get : (s : MBuffer n) => Fin n -> F1 s Bits8
+get @{MB buf} m t = prim__getByte buf (cast $ finToNat m) # t
 
 ||| Safely modify a value in a mutable byte array.
 |||
@@ -171,10 +173,10 @@ get m (MB buf) = prim__getByte buf (cast $ finToNat m) # MB buf
 ||| concerned, this returns a new `MBuffer` wrapper, which must then
 ||| again be used exactly once.
 export
-modify : Fin n -> (Bits8 -> Bits8) -> MBuffer n -@ MBuffer n
-modify m f (MB buf) =
-  let v := prim__getByte buf (cast $ finToNat m)
-   in MB $ set' (finToNat m) (f v) buf
+modify : (s : MBuffer n) => Fin n -> (Bits8 -> Bits8) -> F1' s
+modify m f t =
+  let v # t2 := Buffer.Core.get m t
+   in set m (f v) t2
 
 ||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
 |||
@@ -188,33 +190,32 @@ modify m f (MB buf) =
 ||| Most of the time, we'd like to use the whole array, in which case
 ||| we can just use `freeze`.
 export
-freezeLTE : (0 m : Nat) -> (0 _ : LTE m n) => MBuffer n -@ Ur (IBuffer m)
-freezeLTE _ (MB buf) = MkBang $ IB buf
+freezeLTE : (0 m : Nat) -> (0 _ : LTE m n) => WithMBuffer n (IBuffer m)
+freezeLTE _ @{_} @{MB buf} t = unsafeDiscard t $ MkBang $ IB buf
 
 ||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
 |||
 ||| See `freezeLTE` for some additional notes about how this works under
 ||| the hood.
 export %inline
-freeze : MBuffer n -@ Ur (IBuffer n)
+freeze : WithMBuffer n (IBuffer n)
 freeze = freezeLTE n @{reflexive}
 
-||| Safely discard a linear mutable array.
 export %inline
-discard : MBuffer n -@ ()
-discard (MB _) = ()
+discard : (s : MBuffer n) => T1 s -@ ()
+discard t = unsafeDiscard t ()
 
 ||| Safely discard a linear mutable array, returning a non-linear
 ||| result at the same time.
 export %inline
-discarding : (1 _ : MBuffer n) -> x -> x
-discarding (MB _) x = x
+discarding : (s : MBuffer n) => (1 t : T1 s) -> x -> x
+discarding t x = unsafeDiscard t x
 
 ||| Release a mutable linear buffer to `IO`, thus making it freely
 ||| shareable.
 export %inline
-toIO : MBuffer n -@ Ur (IO Buffer)
-toIO (MB buf) = MkBang (pure buf)
+toIO : WithMBuffer n (IO Buffer)
+toIO @{MB buf} t = unsafeDiscard t (MkBang $ pure buf)
 
 --------------------------------------------------------------------------------
 --          Reading and Writing Files

@@ -95,12 +95,12 @@ export
 fromPairs : (n : Nat) -> a -> List (Nat,a) -> IArray n a
 fromPairs n v ps = unrestricted $ alloc n v (go ps)
   where
-    go : List (Nat,a) -> MArray n a -@ Ur (IArray n a)
-    go []            m = freeze m
-    go ((x,v) :: xs) m =
+    go : List (Nat,a) -> WithMArray n a (IArray n a)
+    go []            t = freeze t
+    go ((x,v) :: xs) t =
       case tryNatToFin x of
-        Just y  => go xs (set y v m)
-        Nothing => go xs m
+        Just y  => go xs (set y v t)
+        Nothing => go xs t
 
 --------------------------------------------------------------------------------
 --          Eq and Ord
@@ -317,18 +317,16 @@ filterWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
   where
     go :
          (cur,x : Nat)
-      -> {auto s : Ix x n}
-      -> {auto 0 lte : LTE cur $ ixToNat s}
-      -> MArray n a
-      -@ !* Array a
-    go cur 0     marr =
-      let MkBang res := freezeLTE cur @{curLTE s lte} marr
+      -> {auto v : Ix x n}
+      -> {auto 0 p : LTE cur $ ixToNat v}
+      -> WithMArray n a (Array a)
+    go cur 0     @{v} @{p} @{s} t =
+      let MkBang res := freezeLTE cur @{curLTE v p} t
        in MkBang (A cur res)
-    go cur (S j) marr = case f (ixToFin s) (ix arr j) of
-      True  =>
-        let marr2 := setNat cur @{curLT s lte} (ix arr j) marr
-         in go (S cur) j marr2
-      False => go cur j marr
+    go cur (S j) @{v} @{p} @{s} t =
+      case f (ixToFin v) (ix arr j) of
+        True  => go (S cur) j (setNat @{s} cur @{curLT v p} (ix arr j) t)
+        False => go cur j t
 
 ||| Filters the values in a graph according to the given predicate.
 export %inline
@@ -348,18 +346,15 @@ mapMaybeWithKey f arr = unrestricted $ unsafeAlloc n (go 0 n)
   where
     go :
          (cur,x : Nat)
-      -> {auto s : Ix x n}
-      -> {auto 0 lte : LTE cur $ ixToNat s}
-      -> MArray n b
-      -@ !* Array b
-    go cur 0     marr =
-      let MkBang res := freezeLTE cur @{curLTE s lte} marr
+      -> {auto v : Ix x n}
+      -> {auto 0 p : LTE cur $ ixToNat v}
+      -> WithMArray n b (Array b)
+    go cur 0     t =
+      let MkBang res := freezeLTE cur @{curLTE v p} t
        in MkBang (A cur res)
-    go cur (S j) marr = case f (ixToFin s) (ix arr j) of
-      Just vb =>
-        let marr2 := setNat cur @{curLT s lte} vb marr
-         in go (S cur) j marr2
-      Nothing => go cur j marr
+    go cur (S j) t @{v} @{p} @{s} = case f (ixToFin v) (ix arr j) of
+      Just vb => go (S cur) j (setNat @{s} cur @{curLT v p} vb t)
+      Nothing => go cur j t
 
 ||| Map the values in a graph together with their corresponding indices
 ||| over a function that might not return a result for all values.
@@ -387,20 +382,16 @@ ListSize = SnocSize . ([<] <><)
 
 -- snocConcat implementation
 sconc :
-     {0 m,n       : Nat}
-  -> (pos         : Nat)
+     (pos         : Nat)
   -> (cur         : Nat)
-  -> (arr         : IArray m a)
+  -> (x           : IArray m a)
   -> (arrs        : SnocList (Array a))
   -> {auto 0 lte1 : LTE pos n}
   -> {auto 0 lte2 : LTE cur m}
-  -> (1 res       : MArray n a)
-  -> Ur (IArray n a)
-sconc pos   0     _   (sx :< A s arr) res = sconc pos s arr sx res
-sconc (S j) (S k) arr arrs            res =
-  let res' := setNat j (atNat arr k) res
-   in sconc j k arr arrs res'
-sconc _ _ _ _ res = freeze res
+  -> WithMArray n a (IArray n a)
+sconc pos   0     _   (sx :< A s x) t = sconc pos s x   sx t
+sconc (S j) (S k) x   sx            t = sconc j k x sx (setNat j (atNat x k) t)
+sconc _     _     _   _             t = freeze t
 
 ||| Concatenate a SnocList of arrays.
 |||
