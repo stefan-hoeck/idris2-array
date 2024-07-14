@@ -215,9 +215,9 @@ copy (IB src) tag srcOffset dstOffset len t =
 
 ||| Copy the content of an immutable buffer to a new buffer.
 export
-thaw : {n : _} -> IBuffer n -> (fun : WithMBuffer n b) -> b
+thaw : {n : _} -> IBuffer n -> (fun : WithMBufferUr n b) -> b
 thaw src f =
-  alloc n $ \t =>
+  allocUr n $ \t =>
     let t1 := copy src () 0 0 n @{reflexive} @{reflexive} t
      in f t1
 
@@ -231,33 +231,33 @@ thaw src f =
 ||| Most of the time, we'd like to use the whole buffer, in which case
 ||| we can just use `freezeBufAt`.
 export
-freezeBufAtLTE :
+freezeAtLTE :
      (0 tag : _)
   -> {auto 0 _ : LTE m n}
   -> {auto arr : MBuffer tag s n}
   -> (0 m : Nat)
   -> T1 s
   -@ Ur (IBuffer m)
-freezeBufAtLTE _ @{_} @{MB buf} _ t = discard t (MkBang $ IB buf)
+freezeAtLTE _ @{_} @{MB buf} _ t = discard t (MkBang $ IB buf)
 
 export %inline
-freezeBufAt : (0 tag : _) -> MBuffer tag s n => T1 s -@ Ur (IBuffer n)
-freezeBufAt tag = freezeBufAtLTE tag @{reflexive} n
+freezeAt : (0 tag : _) -> MBuffer tag s n => T1 s -@ Ur (IBuffer n)
+freezeAt tag = freezeAtLTE tag @{reflexive} n
 
 ||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
 export %inline
-freezeBufLTE :
+freezeLTE :
      {auto 0 p : LTE m n}
   -> {auto arr : MBuffer () s n}
   -> (0 m : Nat)
   -> T1 s
   -@ Ur (IBuffer m)
-freezeBufLTE = freezeBufAtLTE () @{p}
+freezeLTE = freezeAtLTE () @{p}
 
 ||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
 export %inline
-freezeBuf : MBuffer () s n => T1 s -@ Ur (IBuffer n)
-freezeBuf = freezeBufAt ()
+freeze : MBuffer () s n => T1 s -@ Ur (IBuffer n)
+freeze = freezeAt ()
 
 ||| Release a mutable linear buffer to `IO`, thus making it freely
 ||| shareable.
