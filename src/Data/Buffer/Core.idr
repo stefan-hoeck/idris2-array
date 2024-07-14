@@ -16,14 +16,17 @@ import System.File
 
 %foreign "scheme:blodwen-buffer-getbyte"
          "node:lambda:(buf,offset)=>buf.readUInt8(Number(offset))"
+         "browser:lambda:(buf,offset)=>buf[Number(offset)]"
 prim__getByte : Buffer -> (offset : Integer) -> Bits8
 
 %foreign "scheme:blodwen-buffer-setbyte"
-         "node:lambda:(buf,offset,value)=>buf.writeUInt8(value, Number(offset))"
+         "node:lambda:(buf,offset,value,w)=>buf.writeUInt8(value, Number(offset))"
+         "browser:lambda:(buf,offset,value,w)=>{buf[Number(offset)] = value;}"
 prim__setByte : Buffer -> (offset : Integer) -> (val : Bits8) -> PrimIO ()
 
 %foreign "scheme:blodwen-new-buffer"
          "node:lambda:s=>Buffer.alloc(s)"
+         "browser:lambda:s=>new Uint8Array(s)"
 prim__newBuf : Bits32 -> Buffer
 
 %foreign "scheme:blodwen-buffer-getstring"
