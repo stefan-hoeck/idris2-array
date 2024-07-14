@@ -2,7 +2,6 @@ module Data.Buffer.Core
 
 import Data.Buffer
 import Data.Linear.Token
-import Data.Array.Core
 import public Data.Fin
 import public Data.Nat
 
@@ -118,8 +117,8 @@ newMBufferAt tag n t = MB (prim__newBuf (cast n)) # t
 
 ||| Safely write a value to a mutable byte vector.
 export
-setByteAt : (0 tag : _) -> MBuffer tag s n => Fin n -> Bits8 -> F1' s
-setByteAt tag @{MB buf} ix v t =
+setAt : (0 tag : _) -> MBuffer tag s n => Fin n -> Bits8 -> F1' s
+setAt tag @{MB buf} ix v t =
   let MkIORes () w2 := prim__setByte buf (cast $ finToNat ix) v %MkWorld
    in t
 
@@ -130,15 +129,15 @@ setByteAt tag @{MB buf} ix v t =
 ||| linear context. See implementation notes on `set` about some details,
 ||| how this works.
 export %inline
-getByteAt : (0 tag : _) -> MBuffer tag s n => Fin n -> F1 s Bits8
-getByteAt tag @{MB buf} ix t = prim__getByte buf (cast $ finToNat ix) # t
+getAt : (0 tag : _) -> MBuffer tag s n => Fin n -> F1 s Bits8
+getAt tag @{MB buf} ix t = prim__getByte buf (cast $ finToNat ix) # t
 
 ||| Safely modify a value in a mutable byte array.
 export
-modifyByteAt : (0 tag : _) -> MBuffer tag s n => Fin n -> (Bits8 -> Bits8) -> F1' s
-modifyByteAt tag m f t =
-  let v # t2 := getByteAt tag m t
-   in setByteAt tag m (f v) t2
+modifyAt : (0 tag : _) -> MBuffer tag s n => Fin n -> (Bits8 -> Bits8) -> F1' s
+modifyAt tag m f t =
+  let v # t2 := Core.getAt tag m t
+   in setAt tag m (f v) t2
 
 --------------------------------------------------------------------------------
 -- Untagged utilities
@@ -149,20 +148,20 @@ export %inline
 newMBuffer : (n : Nat) -> F1 s (MBuffer () s n)
 newMBuffer = newMBufferAt ()
 
-||| Untagged version of `setByteAt`.
+||| Untagged version of `setAt`.
 export %inline
-setByte : MBuffer () s n => Fin n -> Bits8 -> F1' s
-setByte = setByteAt ()
+set : MBuffer () s n => Fin n -> Bits8 -> F1' s
+set = setAt ()
 
-||| Untagged version of `getByteAt`
+||| Untagged version of `getAt`
 export %inline
-getByte : MBuffer () s n => Fin n -> F1 s Bits8
-getByte = getByteAt ()
+get : MBuffer () s n => Fin n -> F1 s Bits8
+get = getAt ()
 
-||| Untagged version of `modifyByteAt`
+||| Untagged version of `modifyAt`
 export
-modifyByte : MBuffer () s n => Fin n -> (Bits8 -> Bits8) -> F1' s
-modifyByte = modifyByteAt ()
+modify : MBuffer () s n => Fin n -> (Bits8 -> Bits8) -> F1' s
+modify = modifyAt ()
 
 --------------------------------------------------------------------------------
 -- Allocating Byte Vectors
