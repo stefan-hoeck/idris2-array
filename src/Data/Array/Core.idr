@@ -69,17 +69,6 @@ unsafeNewMArrayAt tag n t =
   MA (prim__newArray (cast n) (believe_me ()) %MkWorld) # t
 
 ||| Safely write a value to a mutable array.
-|||
-||| Since the array must be used exactly once, a "new" array (the
-||| same array wrapped in a new `MA`) must be returned, which will
-||| then again be used exactly once.
-|||
-||| Implementation note: This works, because the `ArrayData` value
-||| wrapped in an `MArray` has unrestricted quantity. So "using an `MArray`
-||| exactly once" means "pattern match on the value, extract the inner
-||| array data, and use it as often as you like". This is the reason why
-||| `MArray` and `IArray` are not `public export`: We don't want to leak
-||| the wrapped `ArrayData` to the outer world.
 export
 setAt : (0 tag : _) -> MArray tag s n a => Fin n -> a -> F1' s
 setAt tag @{MA arr} ix v t =
@@ -89,19 +78,13 @@ setAt tag @{MA arr} ix v t =
 ||| Safely read a value from a mutable array.
 |||
 ||| This returns the values thus read with unrestricted quantity, paired
-||| with a new `MArray` of quantity one to be further used in the
-||| linear context. See implementation notes on `set` about some details,
-||| how this works.
+||| with a new linear token of quantity one to be further used in the
+||| linear context.
 export %inline
 getAt : (0 tag : _) -> MArray tag s n a => Fin n -> F1 s a
 getAt tag @{MA arr} ix t = prim__arrayGet arr (cast $ finToNat ix) %MkWorld # t
 
 ||| Safely modify a value in a mutable array.
-|||
-||| Since mutable arrays must be used in a linear context, and this
-||| function "uses up" its input as far as the linearity checker is
-||| concerned, this returns a new `MArray` wrapper, which must then
-||| again be used exactly once.
 export
 modifyAt : (0 tag : _) -> MArray tag s n a => Fin n -> (a -> a) -> F1' s
 modifyAt tag ix f t =
@@ -148,7 +131,7 @@ public export
 0 WithMArrayUr : Nat -> (a,b : Type) -> Type
 WithMArrayUr n a b = forall s . MArray () s n a => (1 t : T1 s) -> Ur b
 
-||| Allocate and release a mutable array in a linear context.
+||| Allocate a mutable array in a linear context.
 |||
 ||| Note: In case you want to freeze the array and return it in the
 ||| result, use `allocUr`.
@@ -159,8 +142,8 @@ alloc n v f =
 
 ||| Allocate and potentially freeze a mutable array in a linear context.
 |||
-||| Note: In case you want to freeze the array and return it in the
-||| result, use `allocUr`.
+||| Note: In case you don't need to freeze the array in the end, you
+|||       might also use `alloc`
 export
 allocUr : (n : Nat) -> a -> (fun : WithMArrayUr n a b) -> b
 allocUr n v f =
