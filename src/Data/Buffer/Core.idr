@@ -194,109 +194,121 @@ allocUr : (n : Nat) -> (fun : WithMBufferUr n a) -> a
 allocUr n f =
   runUr $ \t => let buf # t2 := newMBuffer n t in f @{buf} t2
 
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
 
--- export
--- copy :
---      IBuffer m
---   -> (srcOffset,dstOffset : Nat)
---   -> (len : Nat)
---   -> {auto 0 p1 : LTE (srcOffset + len) m}
---   -> {auto 0 p2 : LTE (dstOffset + len) n}
---   -> {auto s : MBuffer n}
---   -> F1' s
--- copy (IB src) srcOffset dstOffset len (MkT1 w) =
---   let MB dst        := s
---       MkIORes () w2 :=
---         prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) w
---    in MkT1 w2
---
--- ||| Copy the content of an immutable buffer to a new buffer.
--- export
--- thaw : {n : _} -> IBuffer n -> (1 fun : WithMBuffer n b) -> Ur b
--- thaw src f =
---   alloc n $ \b =>
---     let b2 := copy src 0 0 n @{reflexive} @{reflexive} b
---      in f b2
---
--- ||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
--- |||
--- ||| It is not possible the extract and share the underlying `ArrayData`
--- ||| wrapped in an `IBuffer`, so we don't have to be afraid of shared mutable
--- ||| state: The interface of `IBuffer` does not support to further mutate
--- ||| the wrapped array.
--- |||
--- ||| It is safe to only use a prefix of a properly constructed array,
--- ||| therefore we are free to give the resulting array a smaller size.
--- ||| Most of the time, we'd like to use the whole array, in which case
--- ||| we can just use `freeze`.
--- export
--- freezeLTE : (0 m : Nat) -> (0 _ : LTE m n) => WithMBuffer n (IBuffer m)
--- freezeLTE _ @{_} @{MB buf} t = unsafeDiscard t $ MkBang $ IB buf
---
--- ||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
--- |||
--- ||| See `freezeLTE` for some additional notes about how this works under
--- ||| the hood.
--- export %inline
--- freeze : WithMBuffer n (IBuffer n)
--- freeze = freezeLTE n @{reflexive}
---
--- export %inline
--- discard : (s : MBuffer n) => T1 s -@ ()
--- discard t = unsafeDiscard t ()
---
--- ||| Safely discard a linear mutable array, returning a non-linear
--- ||| result at the same time.
--- export %inline
--- discarding : (s : MBuffer n) => (1 t : T1 s) -> x -> x
--- discarding t x = unsafeDiscard t x
---
--- ||| Release a mutable linear buffer to `IO`, thus making it freely
--- ||| shareable.
--- export %inline
--- toIO : WithMBuffer n (IO Buffer)
--- toIO @{MB buf} t = unsafeDiscard t (MkBang $ pure buf)
---
--- --------------------------------------------------------------------------------
--- --          Reading and Writing Files
--- --------------------------------------------------------------------------------
---
--- ||| Read up to `n` bytes from a file into an immutable buffer.
--- export
--- readIBuffer :
---      {auto has : HasIO io}
---   -> Nat
---   -> File
---   -> io (Either FileError (n ** IBuffer n))
--- readIBuffer max f =
---   let buf  := prim__newBuf (cast max)
---    in do
---     Right r <- readBufferData f buf 0 (cast max) | Left x => pure (Left x)
---     if r >= 0
---        then pure (Right (cast r ** IB buf))
---        else pure (Left FileReadError)
---
--- ||| Write up to `len` bytes from a buffer to a file, starting
--- ||| at the given offset.
--- export
--- writeIBuffer :
---      {auto has : HasIO io}
---   -> File
---   -> (offset,len : Nat)
---   -> IBuffer n
---   -> {auto 0 prf : LTE (offset + len) n}
---   -> io (Either (FileError,Int) ())
--- writeIBuffer h o s (IB buf) = writeBufferData h buf (cast o) (cast s)
---
--- ||| Write up to `len` bytes from a buffer to a file, starting
--- ||| at the given offset.
--- export
--- writeMBuffer :
---      {auto has : HasIO io}
---   -> File
---   -> (offset,len : Nat)
---   -> {auto 0 prf : LTE (offset + len) n}
---   -> MBuffer n
---   -@ Ur (io (Either (FileError,Int) ()))
--- writeMBuffer h o s (MB buf) =
---   MkBang $ writeBufferData h buf (cast o) (cast s)
+export
+copy :
+     IBuffer m
+  -> (0 tag : _)
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> {auto buf : MBuffer tag s n}
+  -> F1' s
+copy (IB src) tag srcOffset dstOffset len t =
+  let MB dst        := buf
+      MkIORes () w2 :=
+        prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) %MkWorld
+   in t
+
+||| Copy the content of an immutable buffer to a new buffer.
+export
+thaw : {n : _} -> IBuffer n -> (fun : WithMBuffer n b) -> b
+thaw src f =
+  alloc n $ \t =>
+    let t1 := copy src () 0 0 n @{reflexive} @{reflexive} t
+     in f t1
+
+||| Wrap a mutable buffer in an `IBuffer` without copying.
+|||
+||| In order to make this safe, the associated linear token has to
+||| be discarded.
+|||
+||| It is safe to only use a prefix of a properly constructed array,
+||| therefore we are free to give the resulting array a smaller size.
+||| Most of the time, we'd like to use the whole buffer, in which case
+||| we can just use `freezeBufAt`.
+export
+freezeBufAtLTE :
+     (0 tag : _)
+  -> {auto 0 _ : LTE m n}
+  -> {auto arr : MBuffer tag s n}
+  -> (0 m : Nat)
+  -> T1 s
+  -@ Ur (IBuffer m)
+freezeBufAtLTE _ @{_} @{MB buf} _ t = discard t (MkBang $ IB buf)
+
+export %inline
+freezeBufAt : (0 tag : _) -> MBuffer tag s n => T1 s -@ Ur (IBuffer n)
+freezeBufAt tag = freezeBufAtLTE tag @{reflexive} n
+
+||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
+export %inline
+freezeBufLTE :
+     {auto 0 p : LTE m n}
+  -> {auto arr : MBuffer () s n}
+  -> (0 m : Nat)
+  -> T1 s
+  -@ Ur (IBuffer m)
+freezeBufLTE = freezeBufAtLTE () @{p}
+
+||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
+export %inline
+freezeBuf : MBuffer () s n => T1 s -@ Ur (IBuffer n)
+freezeBuf = freezeBufAt ()
+
+||| Release a mutable linear buffer to `IO`, thus making it freely
+||| shareable.
+export %inline
+toIO : (0 tag : _) -> MBuffer tag s n => T1 s -@ Ur (IO Buffer)
+toIO tag @{MB buf} t = discard t (MkBang $ pure buf)
+
+--------------------------------------------------------------------------------
+--          Reading and Writing Files
+--------------------------------------------------------------------------------
+
+||| Read up to `n` bytes from a file into an immutable buffer.
+export
+readIBuffer :
+     {auto has : HasIO io}
+  -> Nat
+  -> File
+  -> io (Either FileError (n ** IBuffer n))
+readIBuffer max f =
+  let buf  := prim__newBuf (cast max)
+   in do
+    Right r <- readBufferData f buf 0 (cast max) | Left x => pure (Left x)
+    if r >= 0
+       then pure (Right (cast r ** IB buf))
+       else pure (Left FileReadError)
+
+||| Write up to `len` bytes from a buffer to a file, starting
+||| at the given offset.
+export
+writeIBuffer :
+     {auto has : HasIO io}
+  -> File
+  -> (offset,len : Nat)
+  -> IBuffer n
+  -> {auto 0 prf : LTE (offset + len) n}
+  -> io (Either (FileError,Int) ())
+writeIBuffer h o s (IB buf) = writeBufferData h buf (cast o) (cast s)
+
+||| Write up to `len` bytes from a buffer to a file, starting
+||| at the given offset.
+export
+writeMBuffer :
+     {auto has : HasIO io}
+  -> (0 tag : _)
+  -> File
+  -> (offset,len : Nat)
+  -> {auto 0 prf : LTE (offset + len) n}
+  -> {auto buf : MBuffer tag s n}
+  -> T1 s
+  -@ Ur (io (Either (FileError,Int) ()))
+writeMBuffer tag h o s t =
+  let MB b := buf
+   in discard t (MkBang $ writeBufferData h b (cast o) (cast s))
