@@ -50,38 +50,23 @@ take _ (IA arr) = IA arr
 
 ||| A mutable array.
 export
-record MArray (n : Nat) (a : Type) where
-  [noHints]
-  constructor MA
-  arr : ArrayData a
+data MArray : (tag : k) -> (s : Type) -> (n : Nat) -> (a : Type) -> Type where
+  [search tag s]
+  MA : (arr : ArrayData a) -> MArray tag s n a
 
-public export
-0 WithMArray : Nat -> (a,b : Type) -> Type
-WithMArray n a b = (s : MArray n a) => (1 t : T1 s) -> Ur b
+--------------------------------------------------------------------------------
+-- Tagged utilities
+--------------------------------------------------------------------------------
 
-||| Allocate and release a mutable array in a linear context.
-|||
-||| Function `fun` must use the given array exactly once, while
-||| its result must be wrapped in a `Ur`, guaranteeing, that the
-||| mutable array will never be used outside of `fun`, especially
-||| that the result `b` does not hold a reference to the mutable
-||| array.
-export
-alloc : (n : Nat) -> a -> (1 fun : WithMArray n a b) -> Ur b
-alloc n v f = f @{MA $ prim__newArray (cast n) v %MkWorld} (MkT1 %MkWorld)
+||| Fills a new mutable bound to linear computation `s`.
+export %inline
+newMArrayAt : (0 tag : _) -> (n : Nat) -> a -> F1 s (MArray tag s n a)
+newMArrayAt tag n v t = MA (prim__newArray (cast n) v %MkWorld) # t
 
-||| Like `alloc` but the initially created array will not hold any
-||| sensible data.
-|||
-||| Use with care: Client code is responsible to properly initialize
-||| the array with data. This is usefule for creating arrays of unknown
-||| size, when it is not immediately clear, whether it will hold any
-||| data at all.
-|||
-||| See for instance the implementation of `filter` or `mapMaybe`.
-export
-unsafeAlloc : (n : Nat) -> (1 fun : WithMArray n a b) -> Ur b
-unsafeAlloc n f = alloc n (believe_me ()) f
+export %inline
+unsafeNewMArrayAt : (0 tag : _) -> (n : Nat) -> F1 s (MArray tag s n a)
+unsafeNewMArrayAt tag n t =
+  MA (prim__newArray (cast n) (believe_me ()) %MkWorld) # t
 
 ||| Safely write a value to a mutable array.
 |||
@@ -95,11 +80,11 @@ unsafeAlloc n f = alloc n (believe_me ()) f
 ||| array data, and use it as often as you like". This is the reason why
 ||| `MArray` and `IArray` are not `public export`: We don't want to leak
 ||| the wrapped `ArrayData` to the outer world.
-export %inline
-set : (s : MArray n a) => Fin n -> a -> F1' s
-set @{MA arr} ix v (MkT1 w) =
-  let MkIORes () w2 := prim__arraySet arr (cast $ finToNat ix) v w
-   in MkT1 w2
+export
+setAt : (0 tag : _) -> MArray tag s n a => Fin n -> a -> F1' s
+setAt tag @{MA arr} ix v t =
+  let MkIORes () w2 := prim__arraySet arr (cast $ finToNat ix) v %MkWorld
+   in t
 
 ||| Safely read a value from a mutable array.
 |||
@@ -108,9 +93,8 @@ set @{MA arr} ix v (MkT1 w) =
 ||| linear context. See implementation notes on `set` about some details,
 ||| how this works.
 export %inline
-get : (s : MArray n a) => Fin n -> F1 s a
-get @{MA arr} ix (MkT1 w) =
-  prim__arrayGet arr (cast $ finToNat ix) %MkWorld # MkT1 w
+getAt : (0 tag : _) -> MArray tag s n a => Fin n -> F1 s a
+getAt tag @{MA arr} ix t = prim__arrayGet arr (cast $ finToNat ix) %MkWorld # t
 
 ||| Safely modify a value in a mutable array.
 |||
@@ -119,10 +103,94 @@ get @{MA arr} ix (MkT1 w) =
 ||| concerned, this returns a new `MArray` wrapper, which must then
 ||| again be used exactly once.
 export
-modify : (s : MArray n a) => Fin n -> (a -> a) -> F1' s
-modify ix f t =
-  let v # t1 := get ix t
-   in set ix (f v) t1
+modifyAt : (0 tag : _) -> MArray tag s n a => Fin n -> (a -> a) -> F1' s
+modifyAt tag ix f t =
+  let v # t1 := Core.getAt tag ix t
+   in setAt tag ix (f v) t1
+
+--------------------------------------------------------------------------------
+-- Untagged utilities
+--------------------------------------------------------------------------------
+
+||| Untagged version of `newMArrayAt`
+export %inline
+newMArray : (n : Nat) -> a -> F1 s (MArray () s n a)
+newMArray = newMArrayAt ()
+
+export %inline
+unsafeNewMArray : (n : Nat) -> F1 s (MArray () s n a)
+unsafeNewMArray = unsafeNewMArrayAt ()
+
+||| Untagged version of `setAt`
+export %inline
+set : MArray () s n a => Fin n -> a -> F1' s
+set = setAt ()
+
+||| Untagged version of `getAt`
+export %inline
+get : MArray () s n a => Fin n -> F1 s a
+get = getAt ()
+
+||| Untagged version of `modifyAt`
+export %inline
+modify : MArray () s n a => Fin n -> (a -> a) -> F1' s
+modify = modifyAt ()
+
+--------------------------------------------------------------------------------
+-- Allocating Arrays
+--------------------------------------------------------------------------------
+
+public export
+0 WithMArray : Nat -> (a,b : Type) -> Type
+WithMArray n a b = forall s . MArray () s n a => F1 s b
+
+public export
+0 WithMArrayUr : Nat -> (a,b : Type) -> Type
+WithMArrayUr n a b = forall s . MArray () s n a => (1 t : T1 s) -> Ur b
+
+||| Allocate and release a mutable array in a linear context.
+|||
+||| Note: In case you want to freeze the array and return it in the
+||| result, use `allocUr`.
+export
+alloc : (n : Nat) -> a -> (fun : WithMArray n a b) -> b
+alloc n v f =
+  run1 $ \t => let arr # t2 := newMArray n v t in f @{arr} t2
+
+||| Allocate and potentially freeze a mutable array in a linear context.
+|||
+||| Note: In case you want to freeze the array and return it in the
+||| result, use `allocUr`.
+export
+allocUr : (n : Nat) -> a -> (fun : WithMArrayUr n a b) -> b
+allocUr n v f =
+  runUr $ \t => let arr # t2 := newMArray n v t in f @{arr} t2
+
+||| Like `alloc` but the initially created array will not hold any
+||| sensible data.
+|||
+||| Use with care: Client code is responsible to properly initialize
+||| the array with data. This is usefule for creating arrays of unknown
+||| size, when it is not immediately clear, whether it will hold any
+||| data at all.
+|||
+||| See for instance the implementation of `filter` or `mapMaybe`.
+export
+unsafeAlloc : (n : Nat) -> (fun : WithMArray n a b) -> b
+unsafeAlloc n f = alloc n (believe_me ()) f
+
+||| Like `allocUr` but the initially created array will not hold any
+||| sensible data.
+|||
+||| Use with care: Client code is responsible to properly initialize
+||| the array with data. This is usefule for creating arrays of unknown
+||| size, when it is not immediately clear, whether it will hold any
+||| data at all.
+|||
+||| See for instance the implementation of `filter` or `mapMaybe`.
+export
+unsafeAllocUr : (n : Nat) -> (fun : WithMArrayUr n a b) -> b
+unsafeAllocUr n f = allocUr n (believe_me ()) f
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
@@ -136,29 +204,34 @@ modify ix f t =
 ||| Most of the time, we'd like to use the whole array, in which case
 ||| we can just use `freeze`.
 export
-freezeLTE :
-     {auto 0 _ : LTE m n}
-  -> {auto s : MArray n a}
+freezeAtLTE :
+     (0 tag : _)
+  -> {auto 0 _ : LTE m n}
+  -> {auto arr : MArray tag s n a}
   -> (0 m : Nat)
   -> T1 s
   -@ Ur (IArray m a)
-freezeLTE @{_} @{MA arr} _ t = unsafeDiscard t (MkBang $ IA arr)
+freezeAtLTE tag @{_} @{MA arr} _ t = discard t (MkBang $ IA arr)
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
 ||| See `freezeLTE` for some additional notes about how this works under
 ||| the hood.
 export %inline
-freeze : WithMArray n a (IArray n a)
-freeze = freezeLTE @{reflexive} n
+freezeAt : (0 tag : _) -> MArray tag s n a => T1 s -@ Ur (IArray n a)
+freezeAt tag = freezeAtLTE tag @{reflexive} n
 
-||| Safely discard a linear mutable array.
+||| Untagged version of `freezeAtLTE`
 export %inline
-discard : (s : MArray n a) => T1 s -@ ()
-discard t = unsafeDiscard t ()
+freezeLTE :
+     {auto 0 p : LTE m n}
+  -> {auto arr : MArray () s n a}
+  -> (0 m : Nat)
+  -> T1 s
+  -@ Ur (IArray m a)
+freezeLTE = freezeAtLTE () @{p}
 
-||| Safely discard a linear mutable array, returning a non-linear
-||| result at the same time.
+||| Untagged version of `freeze`
 export %inline
-discarding : (s : MArray n a) => (1 t : T1 s) -> x -> x
-discarding t x = unsafeDiscard t x
+freeze : MArray () s n a => T1 s -@ Ur (IArray n a)
+freeze = freezeAt ()
