@@ -151,6 +151,7 @@ writeVect           tag []        x = x
 writeVect {k = S m} tag (y :: ys) x = writeVect tag ys (setIxAt tag m y x)
 
 ||| Writes the data from a vector to a mutable array in reverse order.
+export
 writeVectRev :
      (0 tag : _)
   -> {auto arr : MArray tag s n a}
