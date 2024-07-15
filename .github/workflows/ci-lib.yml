@@ -30,7 +30,9 @@ jobs:
       - name: Install dependencies
         run: apt-get install --yes nodejs
       - name: Build lib
-        run: pack install array
+        run: |
+          apt-get update
+          pack install array
       - name: Run test
         run: pack test array -n 1000
       - name: Run test on node
