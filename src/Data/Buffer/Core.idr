@@ -13,32 +13,30 @@ import System.File
 --          Raw Primitives
 --------------------------------------------------------------------------------
 
-%foreign "scheme:blodwen-buffer-getbyte"
-         "node:lambda:(buf,offset)=>buf.readUInt8(Number(offset))"
-         "browser:lambda:(buf,offset)=>buf[Number(offset)]"
-prim__getByte : Buffer -> (offset : Integer) -> Bits8
+%foreign "scheme:(lambda (b o) (bytevector-u8-ref b o))"
+         "javascript:lambda:(buf,offset)=>buf[offset]"
+prim__getByte : Buffer -> (offset : Bits32) -> Bits8
 
-%foreign "scheme:blodwen-buffer-setbyte"
-         "node:lambda:(buf,offset,value,w)=>buf.writeUInt8(value, Number(offset))"
-         "browser:lambda:(buf,offset,value,w)=>{buf[Number(offset)] = value;}"
-prim__setByte : Buffer -> (offset : Integer) -> (val : Bits8) -> PrimIO ()
+%foreign "scheme:(lambda (s b o v t) (begin (bytevector-u8-set! b o v) t))"
+         "javascript:lambda:(s,buf,offset,value,t)=>{buf[offset] = value; return t}"
+prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> (1 t : T1 s) -> T1 s
 
-%foreign "scheme:blodwen-new-buffer"
-         "node:lambda:s=>Buffer.alloc(s)"
-         "browser:lambda:s=>new Uint8Array(s)"
+%foreign "scheme:(lambda (n) (make-bytevector n))"
+         "javascript:lambda:s=>new Uint8Array(s)"
 prim__newBuf : Bits32 -> Buffer
 
 %foreign "scheme:blodwen-buffer-getstring"
-         "node:lambda:(buf,offset,len)=>buf.slice(Number(offset), Number(offset+len)).toString('utf-8')"
-prim__getString : Buffer -> (offset,len : Integer) -> String
+         "javascript:lambda:(buf,offset,len)=> new TextDecoder().decode(buf.subarray(offset, offset+len))"
+prim__getString : Buffer -> (offset,len : Bits32) -> String
 
-%foreign "scheme:blodwen-buffer-copydata"
-         "node:lambda:(b1,o1,length,b2,o2)=>b1.copy(b2,Number(o2),Number(o1),Number(o1+length))"
-prim__copy : (src : Buffer) -> (srcOffset, len : Integer) ->
-             (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
+%foreign "scheme:(lambda (v) (string->utf8 v))"
+         "javascript:lambda:(v)=> new TextDecoder().decode(v)"
+prim__fromString : (val : String) -> Buffer
 
-destroy : (1 _ : %World) -> (1 _ : a) -> a
-destroy %MkWorld x = x
+%foreign "scheme:(lambda (s b1 o1 len b2 o2 t) (begin (bytevector-copy! b1 o1 b2 o2 len) t))"
+         "javascript:lambda:(s,b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__copy : (src : Buffer) -> (srcOffset, len : Bits32) ->
+             (dst : Buffer) -> (dstOffset : Bits32) -> (1 t : T1 s) -> T1 s
 
 --------------------------------------------------------------------------------
 --          Immutable Buffers
@@ -66,12 +64,9 @@ take : (0 m : Nat) -> IBuffer n -> {auto 0 lte : LTE m n} -> IBuffer m
 take _ (IB buf) = IB buf
 
 ||| Convert an UTF-8 string to a buffer
-export
+export %noinline
 fromString : (s : String) -> IBuffer (cast $ stringByteLength s)
-fromString s =
-  let buf            := prim__newBuf (cast $ stringByteLength s)
-      MkIORes () w2  := toPrim (setString buf 0 s) %MkWorld
-   in destroy w2 (IB buf)
+fromString s = IB (prim__fromString s)
 
 ||| Convert a section of a byte array to an UTF-8 string.
 ||| TODO: Test from/to String
@@ -111,16 +106,14 @@ data MBuffer : (tag : k) -> (s : Type) -> (n : Nat) -> Type where
 --------------------------------------------------------------------------------
 
 ||| Fills a new mutable bound to linear computation `s`.
-export %inline
+export %noinline
 newMBufferAt : (0 tag : _) -> (n : Nat) -> F1 s (MBuffer tag s n)
 newMBufferAt tag n t = MB (prim__newBuf (cast n)) # t
 
 ||| Safely write a value to a mutable byte vector.
-export
+export %noinline
 setAt : (0 tag : _) -> MBuffer tag s n => Fin n -> Bits8 -> F1' s
-setAt tag @{MB buf} ix v t =
-  let MkIORes () w2 := prim__setByte buf (cast $ finToNat ix) v %MkWorld
-   in t
+setAt tag @{MB buf} ix v t = prim__setByte buf (cast $ finToNat ix) v t
 
 ||| Safely read a value from a mutable byte array.
 |||
@@ -128,7 +121,7 @@ setAt tag @{MB buf} ix v t =
 ||| with a new `MBuffer` of quantity one to be further used in the
 ||| linear context. See implementation notes on `set` about some details,
 ||| how this works.
-export %inline
+export %noinline
 getAt : (0 tag : _) -> MBuffer tag s n => Fin n -> F1 s Bits8
 getAt tag @{MB buf} ix t = prim__getByte buf (cast $ finToNat ix) # t
 
@@ -197,7 +190,7 @@ allocUr n f =
 -- Utilities
 --------------------------------------------------------------------------------
 
-export
+export %noinline
 copy :
      IBuffer m
   -> (0 tag : _)
@@ -209,9 +202,7 @@ copy :
   -> F1' s
 copy (IB src) tag srcOffset dstOffset len t =
   let MB dst        := buf
-      MkIORes () w2 :=
-        prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) %MkWorld
-   in t
+   in prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) t
 
 ||| Copy the content of an immutable buffer to a new buffer.
 export

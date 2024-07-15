@@ -73,7 +73,7 @@ fill n v = allocUr n v freeze
 export
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
 generate 0     f = empty
-generate (S k) f = allocUr (S k) (f FZ) $ \t => freeze (genFrom () k f t)
+generate (S k) f = allocUr (S k) (f last) $ \t => freeze (genFrom () k f t)
 
 ||| Generate an array of the given size by filling it with the
 ||| results of repeatedly applying `f` to the initial value.

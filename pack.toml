@@ -8,3 +8,9 @@ test   = "test/test.ipkg"
 type   = "local"
 path   = "docs"
 ipkg   = "docs.ipkg"
+
+[custom.all.ref1]
+type   = "git"
+url    = "git@github.com:stefan-hoeck/idris2-ref1"
+commit = "latest:main"
+ipkg   = "ref1.ipkg"

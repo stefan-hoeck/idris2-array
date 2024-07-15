@@ -15,9 +15,21 @@ import Data.Nat
 
 data ArrayData : Type -> Type where [external]
 
-%extern prim__newArray : forall a . Bits32 -> a -> %World -> (ArrayData a)
-%extern prim__arrayGet : forall a . ArrayData a -> Bits32 -> %World -> a
-%extern prim__arraySet : forall a . ArrayData a -> Bits32 -> a -> PrimIO ()
+%foreign "scheme:(lambda (u n x) (make-vector n x))"
+         "javascript:lambda:(u,n,x) => new Array(n).fill(x)"
+prim__fillArr : Bits32 -> a -> ArrayData a
+
+%foreign "scheme:(lambda (u x) (make-vector x))"
+         "javascript:lambda:(u,x) => new Array(n)"
+prim__newArr : Bits32 -> ArrayData a
+
+%foreign "scheme:(lambda (u v x) (vector-ref v x))"
+         "javascript:lambda:(u,v,x) => v[x]"
+%extern prim__arrGet : ArrayData a -> Bits32 -> a
+
+%foreign "scheme:(lambda (s u v x w t) (begin (vector-set! v x w) t))"
+         "javascript:lambda:(s,u,v,x,w,t) => {v[x] = w; return t}"
+%extern prim__arrSet : ArrayData a -> Bits32 -> a -> (1 t : T1 s) -> T1 s
 
 --------------------------------------------------------------------------------
 --          Immutable Arrays
@@ -32,7 +44,7 @@ record IArray (n : Nat) (a : Type) where
 ||| Safely access a value in an array at the given position.
 export
 at : IArray n a -> Fin n -> a
-at (IA ad) m = prim__arrayGet ad (cast $ finToNat m) %MkWorld
+at (IA ad) m = prim__arrGet ad (cast $ finToNat m)
 
 ||| We can wrap a prefix of an array in O(1) simply by giving it
 ||| a new size index.
@@ -59,30 +71,27 @@ data MArray : (tag : k) -> (s : Type) -> (n : Nat) -> (a : Type) -> Type where
 --------------------------------------------------------------------------------
 
 ||| Fills a new mutable bound to linear computation `s`.
-export %inline
+export %noinline
 newMArrayAt : (0 tag : _) -> (n : Nat) -> a -> F1 s (MArray tag s n a)
-newMArrayAt tag n v t = MA (prim__newArray (cast n) v %MkWorld) # t
+newMArrayAt tag n v t = MA (prim__fillArr (cast n) v) # t
 
-export %inline
+export %noinline
 unsafeNewMArrayAt : (0 tag : _) -> (n : Nat) -> F1 s (MArray tag s n a)
-unsafeNewMArrayAt tag n t =
-  MA (prim__newArray (cast n) (believe_me ()) %MkWorld) # t
+unsafeNewMArrayAt tag n t = MA (prim__newArr (cast n)) # t
 
 ||| Safely write a value to a mutable array.
-export
+export %noinline
 setAt : (0 tag : _) -> MArray tag s n a => Fin n -> a -> F1' s
-setAt tag @{MA arr} ix v t =
-  let MkIORes () w2 := prim__arraySet arr (cast $ finToNat ix) v %MkWorld
-   in t
+setAt tag @{MA arr} ix v t = prim__arrSet arr (cast $ finToNat ix) v t
 
 ||| Safely read a value from a mutable array.
 |||
 ||| This returns the values thus read with unrestricted quantity, paired
 ||| with a new linear token of quantity one to be further used in the
 ||| linear context.
-export %inline
+export %noinline
 getAt : (0 tag : _) -> MArray tag s n a => Fin n -> F1 s a
-getAt tag @{MA arr} ix t = prim__arrayGet arr (cast $ finToNat ix) %MkWorld # t
+getAt tag @{MA arr} ix t = prim__arrGet arr (cast $ finToNat ix) # t
 
 ||| Safely modify a value in a mutable array.
 export
@@ -186,7 +195,7 @@ unsafeAllocUr n f = allocUr n (believe_me ()) f
 ||| therefore we are free to give the resulting array a smaller size.
 ||| Most of the time, we'd like to use the whole array, in which case
 ||| we can just use `freeze`.
-export
+export %noinline
 freezeAtLTE :
      (0 tag : _)
   -> {auto 0 _ : LTE m n}
