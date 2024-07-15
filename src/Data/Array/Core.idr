@@ -195,7 +195,7 @@ unsafeAllocUr n f = allocUr n (believe_me ()) f
 ||| therefore we are free to give the resulting array a smaller size.
 ||| Most of the time, we'd like to use the whole array, in which case
 ||| we can just use `freeze`.
-export %noinline
+export %inline
 freezeAtLTE :
      (0 tag : _)
   -> {auto 0 _ : LTE m n}

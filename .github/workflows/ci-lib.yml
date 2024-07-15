@@ -31,5 +31,7 @@ jobs:
         run: pack install array
       - name: Run test
         run: pack test array -n 1000
+      - name: Run test on node
+        run: pack --cg node test array -n 1000
       - name: Build docs
         run: pack typecheck array-docs

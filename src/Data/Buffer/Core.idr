@@ -21,7 +21,7 @@ prim__getByte : Buffer -> (offset : Bits32) -> Bits8
          "javascript:lambda:(s,buf,offset,value,t)=>{buf[offset] = value; return t}"
 prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> (1 t : T1 s) -> T1 s
 
-%foreign "scheme:(lambda (n) (make-bytevector n))"
+%foreign "scheme:(lambda (n) (make-bytevector n 0))"
          "javascript:lambda:s=>new Uint8Array(s)"
 prim__newBuf : Bits32 -> Buffer
 
@@ -30,7 +30,7 @@ prim__newBuf : Bits32 -> Buffer
 prim__getString : Buffer -> (offset,len : Bits32) -> String
 
 %foreign "scheme:(lambda (v) (string->utf8 v))"
-         "javascript:lambda:(v)=> new TextDecoder().decode(v)"
+         "javascript:lambda:(v)=> new TextEncoder().encode(v)"
 prim__fromString : (val : String) -> Buffer
 
 %foreign "scheme:(lambda (s b1 o1 len b2 o2 t) (begin (bytevector-copy! b1 o1 b2 o2 len) t))"
@@ -221,7 +221,7 @@ thaw src f =
 ||| therefore we are free to give the resulting array a smaller size.
 ||| Most of the time, we'd like to use the whole buffer, in which case
 ||| we can just use `freezeBufAt`.
-export
+export %inline
 freezeAtLTE :
      (0 tag : _)
   -> {auto 0 _ : LTE m n}

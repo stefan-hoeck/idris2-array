@@ -148,7 +148,7 @@ props = MkGroup "Buffer"
   , ("prop_from_to_list", prop_from_to_list)
   , ("prop_from_to_vect", prop_from_to_vect)
   , ("prop_from_to_rev_vect", prop_from_to_rev_vect)
-  -- , ("prop_from_to_string", prop_from_to_string)
+  , ("prop_from_to_string", prop_from_to_string)
   , ("prop_foldl", prop_foldl)
   , ("prop_foldr", prop_foldr)
   , ("prop_generate", prop_generate)
