@@ -144,6 +144,21 @@ writeList :
 writeList tag []        t = t
 writeList tag (y :: ys) t = writeList {xs} tag ys (setAtSuffix tag p y t)
 
+||| Writes the data from a list to a mutable array.
+|||
+||| This uses the `Suffix` proof for safely indexing into the array.
+export
+writeListWith :
+     (0 tag : _)
+  -> {auto arr : MArray tag s (length xs) b}
+  -> (ys : List a)
+  -> (f : a -> b)
+  -> {auto p : Suffix ys xs}
+  -> F1' s
+writeListWith tag []        f t = t
+writeListWith tag (y :: ys) f t =
+  writeListWith {xs} tag ys f (setAtSuffix tag p (f y) t)
+
 ||| Writes the data from a vector to a mutable array.
 export
 writeVect : (0 tag : _) -> MArray tag s n a => Vect k a -> Ix k n => F1' s
@@ -189,6 +204,31 @@ iterateFrom :
   -> F1' s
 iterateFrom tag 0     f v t = t
 iterateFrom tag (S k) f v t = iterateFrom tag k f (f v) (setIxAt tag k v t)
+
+export
+allocList : (xs : List a) -> WithMArrayUr (length xs) a b -> b
+allocList xs g = unsafeAllocUr (length xs) $ \t => g (writeList {xs} () xs t)
+
+export
+allocListWith : (xs : List a) -> (a -> b) -> WithMArrayUr (length xs) b c -> c
+allocListWith xs f g =
+  unsafeAllocUr (length xs) $ \t => g (writeListWith {xs} () xs f t)
+
+export
+allocVect : {n : _} -> Vect n a -> WithMArrayUr n a b -> b
+allocVect xs g = unsafeAllocUr n $ \t => g (writeVect () xs t)
+
+export
+allocVectRev : {n : _} -> Vect n a -> WithMArrayUr n a b -> b
+allocVectRev xs g = unsafeAllocUr n $ \t => g (writeVectRev () n xs t)
+
+export
+allocGen : (n : Nat) -> (Fin n -> a) -> WithMArrayUr n a b -> b
+allocGen n f g = unsafeAllocUr n $ \t => g (genFrom () n f t)
+
+export
+allocIter : (n : Nat) -> (a -> a) -> a -> WithMArrayUr n a b -> b
+allocIter n f v g = unsafeAllocUr n $ \t => g (iterateFrom () n f v t)
 
 --------------------------------------------------------------------------------
 -- Linear Utilities
