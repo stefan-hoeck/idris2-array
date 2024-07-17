@@ -30,18 +30,18 @@ atNat arr x = at arr (natToFinLT x)
 ||| The empty array.
 export
 empty : IBuffer 0
-empty = allocUr 0 freeze
+empty = create 0 $ \r,t => freeze r t
 
 ||| Copy the values in a list to an array of the same length.
 export %inline
 bufferL : (ls : List Bits8) -> IBuffer (length ls)
 bufferL xs =
-  allocUr (length xs) $ \t => freeze (writeList {xs} () xs t)
+  create (length xs) $ \r,t => freeze r (writeList {xs} r xs t)
 
 ||| Copy the values in a vector to an array of the same length.
 export %inline
 buffer : {n : _} -> Vect n Bits8 -> IBuffer n
-buffer xs = allocUr n $ \t => freeze (writeVect () xs t)
+buffer xs = create n $ \r,t => freeze r (writeVect r xs t)
 
 ||| Copy the values in a vector to an array of the same length
 ||| in reverse order.
@@ -50,13 +50,13 @@ buffer xs = allocUr n $ \t => freeze (writeVect () xs t)
 ||| from tail to head for instance when parsing some data.
 export %inline
 revBuffer : {n : _} -> Vect n Bits8 -> IBuffer n
-revBuffer xs = allocUr n $ \t => freeze (writeVectRev () n xs t)
+revBuffer xs = create n $ \r,t => freeze r (writeVectRev r n xs t)
 
 ||| Generate an immutable array of the given size using
 ||| the given iteration function.
 export %inline
 generate : (n : Nat) -> (Fin n -> Bits8) -> IBuffer n
-generate n f = allocUr n $ \t => freeze (genFrom () n f t)
+generate n f = create n $ \r,t => freeze r (genFrom r n f t)
 
 ||| Fill an immutable array of the given size with the given value
 export %inline
@@ -67,7 +67,7 @@ fill n = generate n . const
 ||| results of repeatedly applying `f` to the initial value.
 export %inline
 iterate : (n : Nat) -> (f : Bits8 -> Bits8) -> Bits8 -> IBuffer n
-iterate n f v = allocUr n $ \t => freeze (iterateFrom () n f v t)
+iterate n f v = create n $ \r,t => freeze r (iterateFrom r n f v t)
 
 ||| Copy the content of a byte array to a new array.
 |||
@@ -76,7 +76,7 @@ iterate n f v = allocUr n $ \t => freeze (iterateFrom () n f v t)
 ||| instance after taking a smalle prefix of a large array with `take`.
 export
 force : {n : _} -> IBuffer n -> IBuffer n
-force buf = thaw buf freeze
+force buf = thaw buf $ \r,t => freeze r t
 
 --------------------------------------------------------------------------------
 --          Eq and Ord
@@ -304,7 +304,7 @@ traverse = traverseWithIndex . const
 export
 append : {m,n : _} -> IBuffer m -> IBuffer n -> IBuffer (m + n)
 append src1 src2 =
-  Buffer.Core.allocUr (m+n) $ \t =>
-    let t1 := copy {n = m+n} src1 () 0 0 m @{reflexive} @{lteAddRight _} t
-        t2 := copy src2 () 0 m n @{reflexive} @{reflexive} t1
-     in freeze t2
+  create (m+n) $ \r,t =>
+    let t := copy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
+        t := copy src2 0 m n @{reflexive} @{reflexive} r t
+     in freeze r t

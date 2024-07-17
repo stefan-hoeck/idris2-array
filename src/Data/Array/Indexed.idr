@@ -37,20 +37,17 @@ atNat arr x = at arr (natToFinLT x)
 ||| The empty array.
 export
 empty : IArray 0 a
-empty = believe_me $ allocUr 0 () freeze
+empty = unsafeCreate 0 $ \r,t => freeze r t
 
 ||| Copy the values in a list to an array of the same length.
 export
 arrayL : (ls : List a) -> IArray (length ls) a
-arrayL []        = empty
-arrayL (x :: xs) =
-  allocUr (length $ x::xs) x $ \t => freeze (writeList {xs = x::xs} () xs t)
+arrayL xs = allocList xs $ \r,t => freeze r t
 
 ||| Copy the values in a vector to an array of the same length.
 export
 array : {n : _} -> Vect n a -> IArray n a
-array []        = empty
-array (x :: xs) = allocUr n x $ \t => freeze (writeVect () xs t)
+array xs = allocVect xs $ \r,t => freeze r t
 
 ||| Copy the values in a vector to an array of the same length
 ||| in reverse order.
@@ -59,28 +56,24 @@ array (x :: xs) = allocUr n x $ \t => freeze (writeVect () xs t)
 ||| from tail to head for instance when parsing some data.
 export
 revArray : {n : _} -> Vect n a -> IArray n a
-revArray []                  = empty
-revArray {n = S k} (x :: xs) =
-  allocUr (S k) x $ \t => freeze (writeVectRev () k xs t)
+revArray xs = allocVectRev xs $ \r,t => freeze r t
 
 ||| Fill an immutable array of the given size with the given value
 export
 fill : (n : Nat) -> a -> IArray n a
-fill n v = allocUr n v freeze
+fill n v = create n v $ \r,t => freeze r t
 
 ||| Generate an immutable array of the given size using
 ||| the given iteration function.
 export
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
-generate 0     f = empty
-generate (S k) f = allocUr (S k) (f last) $ \t => freeze (genFrom () k f t)
+generate n f = allocGen n f $ \r,t => freeze r t
 
 ||| Generate an array of the given size by filling it with the
 ||| results of repeatedly applying `f` to the initial value.
 export
 iterate : (n : Nat) -> (f : a -> a) -> a -> IArray n a
-iterate 0     _ _ = empty
-iterate (S k) f v = allocUr (S k) v $ \t => freeze (iterateFrom () k f (f v) t)
+iterate n f v = allocIter n f v $ \r,t => freeze r t
 
 ||| Copy the content of an array to a new array.
 |||
@@ -95,15 +88,15 @@ force arr = generate n (at arr)
 ||| of pairs to replace specific positions.
 export
 fromPairs : (n : Nat) -> a -> List (Nat,a) -> IArray n a
-fromPairs n v ps = allocUr n v (go ps)
+fromPairs n v ps = create n v (go ps)
   where
-    go : List (Nat,a) -> WithMArrayUr n a (IArray n a)
-    go []            t = freeze t
-    go ((x,v) :: xs) t =
+    go : List (Nat,a) -> FromMArray n a (IArray n a)
+    go []            r t = freeze r t
+    go ((x,v) :: xs) r t =
       case tryNatToFin x of
-        Just y  => go xs (set y v t)
-        Nothing => go xs t
---
+        Just y  => go xs r (set r y v t)
+        Nothing => go xs r t
+
 --------------------------------------------------------------------------------
 --          Eq and Ord
 --------------------------------------------------------------------------------
@@ -314,21 +307,21 @@ filterWithKey :
   -> (Fin n -> a -> Bool)
   -> IArray n a
   -> Array a
-filterWithKey f arr = unsafeAllocUr n (go 0 n)
+filterWithKey f arr = unsafeCreate n (go 0 n)
 
   where
     go :
          (cur,x : Nat)
       -> {auto v : Ix x n}
-      -> {auto 0 p : LTE cur $ ixToNat v}
-      -> WithMArrayUr n a (Array a)
-    go cur 0     @{v} @{p} @{s} t =
-      let MkBang res := freezeLTE cur @{curLTE v p} t
-       in MkBang (A cur res)
-    go cur (S j) @{v} @{p} @{s} t =
+      -> {auto 0 prf : LTE cur $ ixToNat v}
+      -> FromMArray n a (Array a)
+    go cur 0 r t =
+      let res # t := freezeLTE @{curLTE v prf} r cur t
+       in A cur res # t
+    go cur (S j) r t =
       case f (ixToFin v) (ix arr j) of
-        True  => go (S cur) j (setNat @{s} cur @{curLT v p} (ix arr j) t)
-        False => go cur j t
+        True  => go (S cur) j r (setNat r cur {lt = curLT v prf} (ix arr j) t)
+        False => go cur j r t
 
 ||| Filters the values in a graph according to the given predicate.
 export %inline
@@ -343,20 +336,20 @@ mapMaybeWithKey :
   -> (Fin n -> a -> Maybe b)
   -> IArray n a
   -> Array b
-mapMaybeWithKey f arr = unsafeAllocUr n (go 0 n)
+mapMaybeWithKey f arr = unsafeCreate n (go 0 n)
 
   where
     go :
          (cur,x : Nat)
       -> {auto v : Ix x n}
-      -> {auto 0 p : LTE cur $ ixToNat v}
-      -> WithMArrayUr n b (Array b)
-    go cur 0     t =
-      let MkBang res := freezeLTE cur @{curLTE v p} t
-       in MkBang (A cur res)
-    go cur (S j) t @{v} @{p} @{s} = case f (ixToFin v) (ix arr j) of
-      Just vb => go (S cur) j (setNat @{s} cur @{curLT v p} vb t)
-      Nothing => go cur j t
+      -> {auto 0 prf : LTE cur $ ixToNat v}
+      -> FromMArray n b (Array b)
+    go cur 0 r t =
+      let res # t := freezeLTE @{curLTE v prf} r cur t
+       in A cur res # t
+    go cur (S j) r t = case f (ixToFin v) (ix arr j) of
+      Just vb => go (S cur) j r (setNat r cur {lt = curLT v prf} vb t)
+      Nothing => go cur j r t
 
 ||| Map the values in a graph together with their corresponding indices
 ||| over a function that might not return a result for all values.
@@ -390,10 +383,10 @@ sconc :
   -> (arrs        : SnocList (Array a))
   -> {auto 0 lte1 : LTE pos n}
   -> {auto 0 lte2 : LTE cur m}
-  -> WithMArrayUr n a (IArray n a)
-sconc pos   0     _   (sx :< A s x) t = sconc pos s x   sx t
-sconc (S j) (S k) x   sx            t = sconc j k x sx (setNat j (atNat x k) t)
-sconc _     _     _   _             t = freeze t
+  -> FromMArray n a (IArray n a)
+sconc pos   0     _   (sx :< A s x) r t = sconc pos s x   sx r t
+sconc (S j) (S k) x   sx            r t = sconc j k x sx r (setNat r j (atNat x k) t)
+sconc _     _     _   _             r t = freeze r t
 
 ||| Concatenate a SnocList of arrays.
 |||
@@ -405,7 +398,7 @@ snocConcat [<]                 = empty
 snocConcat (sa :< A 0 _)       =
   rewrite plusZeroRightNeutral (SnocSize sa) in snocConcat sa
 snocConcat (sa :< A (S k) arr) with (SnocSize sa + S k)
-  _ | n = allocUr n (at arr 0) (sconc n (S k) arr sa)
+  _ | n = create n (at arr 0) (sconc n (S k) arr sa)
 
 ||| Concatenate a List of arrays.
 |||

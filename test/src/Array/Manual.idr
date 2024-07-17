@@ -11,35 +11,33 @@ import Hedgehog
 test1 : Eq a => Show a => a -> a -> Property
 test1 x y = property1 (x === y)
 
-getOnly : MArray () s 10 String => F1 s String
-getOnly = get 3
+getOnly : WithMArray 10 String String
+getOnly r = get r 3
 
-setget : MArray () s 10 String => F1 s (String,String)
-setget t =
-  let t2 := set 3 "bar" t
-      s1 # t3 := get 3 t2
-      s2 # t4 := get 2 t3
-   in (s1,s2) # t4
+setget : WithMArray 10 String (String,String)
+setget r t =
+  let t := set r 3 "bar" t
+      s1 # t := get r 3 t
+      s2 # t := get r 2 t
+   in (s1,s2) # t
 
-setgetSyntax : MArray () s 10 String => F1 s (String,String)
-setgetSyntax = Syntax.do
-  set 3 "bar"
-  [| MkPair (get 3) (get 2) |]
+setgetSyntax : WithMArray 10 String (String,String)
+setgetSyntax r = Syntax.do
+  set r 3 "bar"
+  [| MkPair (get r 3) (get r 2) |]
 
-writeLst : MArray () s 4 String => F1 s (String,String)
-writeLst = Syntax.do
-  writeList () {xs = ["1","2","3","4"]} ["1","2","3","4"]
-  [| MkPair (get 0) (get 1) |]
+writeLst : WithMArray 4 String (String,String)
+writeLst r = Syntax.do
+  writeList r {xs = ["1","2","3","4"]} ["1","2","3","4"]
+  [| MkPair (get r 0) (get r 1) |]
 
-writeVct : MArray () s 4 String => F1 s (String,String)
-writeVct = Syntax.do
-  writeVect () ["1","2","3","4"]
-  [| MkPair (get 0) (get 1) |]
+writeVct : WithMArray 4 String (String,String)
+writeVct r = Syntax.do
+  writeVect r ["1","2","3","4"]
+  [| MkPair (get r 0) (get r 1) |]
 
-writeVctUr : MArray () s 4 String => (1 t : T1 s) -> Ur (IArray 4 String)
-writeVctUr t =
-  let t2 := writeVect () ["1","2","3","4"] t
-   in freeze t2
+writeVctUr : FromMArray 4 String (IArray 4 String)
+writeVctUr r t = freeze r (writeVect r ["1","2","3","4"] t)
 
 export
 props : Group
@@ -50,5 +48,5 @@ props =
     , ("setgetSyntax",  test1 (alloc 10 "foo" setgetSyntax) ("bar","foo"))
     , ("writeLst",  test1 (alloc 4 "foo" writeLst) ("1","2"))
     , ("writeVct",  test1 (alloc 4 "foo" writeVct) ("1","2"))
-    , ("writeVctUr",  test1 (allocUr 4 "foo" writeVctUr) (array ["1","2","3","4"]))
+    , ("writeVctUr",  test1 (create 4 "foo" writeVctUr) (array ["1","2","3","4"]))
     ]

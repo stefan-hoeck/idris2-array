@@ -16,15 +16,16 @@ import Data.Vect
 ||| used for filling said array.
 export %inline
 setAtSuffix :
-     (0 tag : _)
-  -> {auto _ : MBuffer tag s (length ys)}
+     (r : MBuffer (length ys))
+  -> {auto 0 p : Res r rs}
   -> Suffix (x::xs) ys
   -> Bits8
-  -> F1' s
-setAtSuffix tag v = setAt tag (suffixToFin v)
+  -> F1' rs
+setAtSuffix r v = set r (suffixToFin v)
 
-parameters (0 tag : _)
-           {auto buf : MBuffer tag s n}
+parameters {0 rs : Resources}
+           (r : MBuffer n)
+           {auto 0 p : Res r rs}
 
   ||| Set a value at index `n - m` in a mutable byte array.
   |||
@@ -32,24 +33,14 @@ parameters (0 tag : _)
   ||| the array. It is mainly useful for iterating over an array from the left
   ||| by using a natural number for counting down (see also the documentation
   ||| for `Ix`).
-  |||
-  ||| Since mutable arrays must be used in a linear context, and this
-  ||| function "uses up" its input as far as the linearity checker is
-  ||| concerned, this returns a new `MBuffer` wrapper, which must then
-  ||| again be used exactly once.
   export %inline
-  setIxAt : (0 m : Nat) -> (x : Ix (S m) n) => Bits8 -> F1' s
-  setIxAt _ = setAt tag (ixToFin x)
+  setIx : (0 m : Nat) -> (x : Ix (S m) n) => Bits8 -> F1' rs
+  setIx _ = set r (ixToFin x)
 
   ||| Set a value at index `m` in a mutable byte array.
-  |||
-  ||| Since mutable arrays must be used in a linear context, and this
-  ||| function "uses up" its input as far as the linearity checker is
-  ||| concerned, this returns a new `MBuffer` wrapper, which must then
-  ||| again be used exactly once.
   export %inline
-  setNatAt : (m : Nat) -> (0 lt : LT m n) => Bits8 -> F1' s
-  setNatAt x = setAt tag (natToFinLT x)
+  setNat : (m : Nat) -> (0 lt : LT m n) => Bits8 -> F1' rs
+  setNat x = set r (natToFinLT x)
 
   ||| Read a value at index `n - m` from a mutable byte array.
   |||
@@ -57,14 +48,9 @@ parameters (0 tag : _)
   ||| the array. It is mainly useful for iterating over an array from the left
   ||| by using a natural number for counting down (see also the documentation
   ||| for `Ix`).
-  |||
-  ||| Since mutable arrays must be used in a linear context, and this
-  ||| function "uses up" its input as far as the linearity checker is
-  ||| concerned, this also returns a new `MBuffer` wrapper, which must then
-  ||| again be used exactly once.
   export %inline
-  getIxAt : (0 m : Nat) -> (x : Ix (S m) n) => F1 s Bits8
-  getIxAt _ = getAt tag (ixToFin x)
+  getIx : (0 m : Nat) -> (x : Ix (S m) n) => F1 rs Bits8
+  getIx _ = get r (ixToFin x)
 
   ||| Read a value at index `m` from a mutable byte array.
   |||
@@ -73,8 +59,8 @@ parameters (0 tag : _)
   ||| concerned, this also returns a new `MBuffer` wrapper, which must then
   ||| again be used exactly once.
   export %inline
-  getNatAt : (m : Nat) -> (0 lt : LT m n) => F1 s Bits8
-  getNatAt x = getAt tag (natToFinLT x)
+  getNat : (m : Nat) -> (0 lt : LT m n) => F1 rs Bits8
+  getNat x = get r (natToFinLT x)
 
   ||| Modify a value at index `n - m` in a mutable byte array.
   |||
@@ -82,50 +68,14 @@ parameters (0 tag : _)
   ||| the array. It is mainly useful for iterating over an array from the left
   ||| by using a natural number for counting down (see also the documentation
   ||| for `Ix`).
-  |||
-  ||| Since mutable arrays must be used in a linear context, and this
-  ||| function "uses up" its input as far as the linearity checker is
-  ||| concerned, this returns a new `MBuffer` wrapper, which must then
-  ||| again be used exactly once.
   export %inline
-  modifyIxAt : (0 m : Nat) -> (x : Ix (S m) n) => (Bits8 -> Bits8) -> F1' s
-  modifyIxAt _ = modifyAt tag (ixToFin x)
+  modifyIx : (0 m : Nat) -> (x : Ix (S m) n) => (Bits8 -> Bits8) -> F1' rs
+  modifyIx _ = modify r (ixToFin x)
 
   ||| Modify a value at index `m` in a mutable byte array.
-  |||
-  ||| Since mutable arrays must be used in a linear context, and this
-  ||| function "uses up" its input as far as the linearity checker is
-  ||| concerned, this returns a new `MBuffer` wrapper, which must then
-  ||| again be used exactly once.
   export %inline
-  modifyNatAt : (m : Nat) -> (0 lt : LT m n) => (Bits8 -> Bits8) -> F1' s
-  modifyNatAt m = modifyAt tag (natToFinLT m)
-
-parameters {auto arr : MBuffer () s n}
-
-  export %inline
-  setIx : (0 m : Nat) -> (x : Ix (S m) n) => Bits8 -> F1' s
-  setIx = setIxAt ()
-
-  export %inline
-  setNat : (m : Nat) -> (0 lt : LT m n) => Bits8 -> F1' s
-  setNat = setNatAt ()
-
-  export %inline
-  getIx : (0 m : Nat) -> (x : Ix (S m) n) => F1 s Bits8
-  getIx = getIxAt ()
-
-  export %inline
-  getNat : (m : Nat) -> (0 lt : LT m n) => F1 s Bits8
-  getNat = getNatAt ()
-
-  export %inline
-  modifyIx : (0 m : Nat) -> (x : Ix (S m) n) => (Bits8 -> Bits8) -> F1' s
-  modifyIx = modifyIxAt ()
-
-  export %inline
-  modifyNat : (m : Nat) -> (0 lt : LT m n) => (Bits8 -> Bits8) -> F1' s
-  modifyNat = modifyNatAt ()
+  modifyNat : (m : Nat) -> (0 lt : LT m n) => (Bits8 -> Bits8) -> F1' rs
+  modifyNat m = modify r (natToFinLT m)
 
 --------------------------------------------------------------------------------
 --          Allocating Buffers
@@ -134,56 +84,41 @@ parameters {auto arr : MBuffer () s n}
 ||| Writes the data from a list to a mutable byte vector.
 export
 writeList :
-     (0 tag : _)
-  -> {auto arr : MBuffer tag s (length xs)}
+     (r : MBuffer (length xs))
+  -> {auto 0 _ : Res r rs}
   -> (ys : List Bits8)
   -> {auto p : Suffix ys xs}
-  -> F1' s
-writeList tag []        t = t
-writeList tag (y :: ys) t = writeList {xs} tag ys (setAtSuffix tag p y t)
+  -> F1' rs
+writeList r []        t = t
+writeList r (y :: ys) t = writeList {xs} r ys (setAtSuffix r p y t)
 
-||| Writes the data from a vector to a mutable array.
-export
-writeVect : (0 tag : _) -> MBuffer tag s n => Vect k Bits8 -> Ix k n => F1' s
-writeVect           tag []        x = x
-writeVect {k = S m} tag (y :: ys) x = writeVect tag ys (setIxAt tag m y x)
+parameters {0 rs : Resources}
+           (r : MBuffer n)
+           {auto 0 p : Res r rs}
 
-||| Writes the data from a vector to a mutable array in reverse order.
-export
-writeVectRev :
-     (0 tag : _)
-  -> {auto arr : MBuffer tag s n}
-  -> (m : Nat)
-  -> Vect k Bits8
-  -> {auto 0 _ : LTE m n}
-  -> F1' s
-writeVectRev tag (S l) (y :: ys) x = writeVectRev tag l ys (setNatAt tag l y x)
-writeVectRev tag _     _         x = x
+  ||| Writes the data from a vector to a mutable array.
+  export
+  writeVect : Vect k Bits8 -> Ix k n => F1' rs
+  writeVect           []        t = t
+  writeVect {k = S m} (y :: ys) t = writeVect ys (setIx r m y t)
 
-||| Overwrite the values in a mutable array from the
-||| given index downward with the result of the given function.
-export
-genFrom :
-     (0 tag : _)
-  -> {auto arr : MBuffer tag s n}
-  -> (m : Nat)
-  -> {auto 0 _ : LTE m n}
-  -> (Fin n -> Bits8)
-  -> F1' s
-genFrom tag 0     f t = t
-genFrom tag (S k) f t = genFrom tag k f (setNatAt tag k (f $ natToFinLT k) t)
+  ||| Writes the data from a vector to a mutable array in reverse order.
+  export
+  writeVectRev : (m : Nat) -> Vect k Bits8 -> (0 _ : LTE m n) => F1' rs
+  writeVectRev (S l) (y :: ys) t = writeVectRev l ys (setNat r l y t)
+  writeVectRev _     _         t = t
 
-||| Overwrite the values in a mutable array from the
-||| given index upward with the results of applying the given
-||| function repeatedly.
-export
-iterateFrom :
-     (0 tag : _)
-  -> {auto arr : MBuffer tag s n}
-  -> (m : Nat)
-  -> {auto ix : Ix m n}
-  -> (Bits8 -> Bits8)
-  -> Bits8
-  -> F1' s
-iterateFrom tag 0     f v t = t
-iterateFrom tag (S k) f v t = iterateFrom tag k f (f v) (setIxAt tag k v t)
+  ||| Overwrite the values in a mutable array from the
+  ||| given index downward with the result of the given function.
+  export
+  genFrom : (m : Nat) -> (0 _ : LTE m n) => (Fin n -> Bits8) -> F1' rs
+  genFrom 0     f t = t
+  genFrom (S k) f t = genFrom k f (setNat r k (f $ natToFinLT k) t)
+
+  ||| Overwrite the values in a mutable array from the
+  ||| given index upward with the results of applying the given
+  ||| function repeatedly.
+  export
+  iterateFrom : (m : Nat) -> (ix : Ix m n) => (Bits8 -> Bits8) -> Bits8 -> F1' rs
+  iterateFrom 0     f v t = t
+  iterateFrom (S k) f v t = iterateFrom k f (f v) (setIx r k v t)
