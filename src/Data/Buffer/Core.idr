@@ -1,8 +1,7 @@
 module Data.Buffer.Core
 
 import Data.Buffer
-import Data.Linear
-import Data.Array.Core
+import Data.Linear.Token
 import public Data.Fin
 import public Data.Nat
 
@@ -14,37 +13,30 @@ import System.File
 --          Raw Primitives
 --------------------------------------------------------------------------------
 
-%foreign "scheme:blodwen-buffer-getbyte"
-         "node:lambda:(buf,offset)=>buf.readUInt8(Number(offset))"
-         "browser:lambda:(buf,offset)=>buf[Number(offset)]"
-prim__getByte : Buffer -> (offset : Integer) -> Bits8
+%foreign "scheme:(lambda (b o) (bytevector-u8-ref b o))"
+         "javascript:lambda:(buf,offset)=>buf[offset]"
+prim__getByte : Buffer -> (offset : Bits32) -> Bits8
 
-%foreign "scheme:blodwen-buffer-setbyte"
-         "node:lambda:(buf,offset,value,w)=>buf.writeUInt8(value, Number(offset))"
-         "browser:lambda:(buf,offset,value,w)=>{buf[Number(offset)] = value;}"
-prim__setByte : Buffer -> (offset : Integer) -> (val : Bits8) -> PrimIO ()
+%foreign "scheme:(lambda (b o v t) (begin (bytevector-u8-set! b o v) t))"
+         "javascript:lambda:(buf,offset,value,t)=>{buf[offset] = value; return t}"
+prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> (1 t : AnyPtr) -> AnyPtr
 
-%foreign "scheme:blodwen-new-buffer"
-         "node:lambda:s=>Buffer.alloc(s)"
-         "browser:lambda:s=>new Uint8Array(s)"
+%foreign "scheme:(lambda (n) (make-bytevector n 0))"
+         "javascript:lambda:s=>new Uint8Array(s)"
 prim__newBuf : Bits32 -> Buffer
 
 %foreign "scheme:blodwen-buffer-getstring"
-         "node:lambda:(buf,offset,len)=>buf.slice(Number(offset), Number(offset+len)).toString('utf-8')"
-prim__getString : Buffer -> (offset,len : Integer) -> String
+         "javascript:lambda:(buf,offset,len)=> new TextDecoder().decode(buf.subarray(offset, offset+len))"
+prim__getString : Buffer -> (offset,len : Bits32) -> String
 
-%foreign "scheme:blodwen-buffer-copydata"
-         "node:lambda:(b1,o1,length,b2,o2)=>b1.copy(b2,Number(o2),Number(o1),Number(o1+length))"
-prim__copy : (src : Buffer) -> (srcOffset, len : Integer) ->
-             (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
+%foreign "scheme:(lambda (v) (string->utf8 v))"
+         "javascript:lambda:(v)=> new TextEncoder().encode(v)"
+prim__fromString : (val : String) -> Buffer
 
-destroy : (1 _ : %World) -> (1 _ : a) -> a
-destroy %MkWorld x = x
-
-set' : (o : Nat) -> Bits8 -> Buffer -> Buffer
-set' o v buf =
-  let MkIORes () w2 := prim__setByte buf (cast o) v %MkWorld
-   in destroy w2 buf
+%foreign "scheme:(lambda (b1 o1 len b2 o2 t) (begin (bytevector-copy! b1 o1 b2 o2 len) t))"
+         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__copy : (src : Buffer) -> (srcOffset, len : Bits32) ->
+             (dst : Buffer) -> (dstOffset : Bits32) -> (1 t : AnyPtr) -> AnyPtr
 
 --------------------------------------------------------------------------------
 --          Immutable Buffers
@@ -72,15 +64,11 @@ take : (0 m : Nat) -> IBuffer n -> {auto 0 lte : LTE m n} -> IBuffer m
 take _ (IB buf) = IB buf
 
 ||| Convert an UTF-8 string to a buffer
-export
+export %noinline
 fromString : (s : String) -> IBuffer (cast $ stringByteLength s)
-fromString s =
-  let buf            := prim__newBuf (cast $ stringByteLength s)
-      MkIORes () w2  := toPrim (setString buf 0 s) %MkWorld
-   in destroy w2 (IB buf)
+fromString s = IB (prim__fromString s)
 
 ||| Convert a section of a byte array to an UTF-8 string.
-||| TODO: Test from/to String
 export
 toString : IBuffer n -> (off,len : Nat) -> (0 _ : LTE (off + len) n) => String
 toString (IB buf) off len = prim__getString buf (cast off) (cast len)
@@ -94,7 +82,7 @@ export
 unsafeGetBuffer : IBuffer n -> Buffer
 unsafeGetBuffer (IB buf) = buf
 
-||| Wrappes a bare mutable buffer in an `IBuffer`.
+||| Wrapps a bare mutable buffer in an `IBuffer`.
 |||
 ||| Client code is responsible to make sure the original buffer is no longer
 ||| used.
@@ -108,113 +96,136 @@ unsafeMakeBuffer = IB
 
 ||| A mutable byte array.
 export
-record MBuffer (n : Nat) where
-  constructor MB
-  buf : Buffer
+data MBuffer : (n : Nat) -> Type where
+  MB : (buf : Buffer) -> MBuffer n
 
-||| Allocate and release a mutable byte array in a linear context.
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
+
+||| Fills a new mutable bound to linear computation `s`.
+export %noinline
+newMBuffer : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MBuffer n)
+newMBuffer n t = A (MB (prim__newBuf (cast n))) (unsafeBind t)
+
+||| Safely write a value to a mutable byte vector.
+export %noinline
+set : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> Bits8 -> F1' rs
+set (MB buf) ix v = ffi (prim__setByte buf (cast $ finToNat ix) v)
+
+||| Safely read a value from a mutable byte array.
+export %noinline
+get : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> F1 rs Bits8
+get (MB buf) ix t = prim__getByte buf (cast $ finToNat ix) # t
+
+||| Safely modify a value in a mutable byte array.
+export
+modify :
+     (r : MBuffer n)
+  -> {auto 0 p : Res r rs}
+  -> Fin n
+  -> (Bits8 -> Bits8)
+  -> F1' rs
+modify r m f t = let v # t := get r m t in set r m (f v) t
+
+||| Release a byte array.
 |||
-||| Function `fun` must use the given array exactly once, while
-||| its result must be wrapped in a `Ur`, guaranteeing, that the
-||| mutable array will never be used outside of `fun`, especially
-||| that the result `b` does not hold a reference to the mutable
-||| array.
-export
-alloc : (n : Nat) -> (1 fun : MBuffer n -@ Ur b) -> Ur b
-alloc n f = f (MB $ prim__newBuf (cast n))
+||| Afterwards, it can no longer be use with the given linear token.
+export %inline
+release :
+     (0 r : MBuffer n)
+  -> {auto 0 p : Res r rs}
+  -> (1 t : T1 rs)
+  -> T1 (Drop rs p)
+release _ = unsafeRelease p
 
+--------------------------------------------------------------------------------
+-- Allocating Byte Vectors
+--------------------------------------------------------------------------------
+
+public export
+0 WithMBuffer : Nat -> (a : Type) -> Type
+WithMBuffer n a = (r : MBuffer n) -> F1 [r] a
+
+public export
+0 FromMBuffer : Nat -> (a : Type) -> Type
+FromMBuffer n a = (r : MBuffer n) -> (1 t : T1 [r]) -> R1 [] a
+
+||| Allocate and potentially freeze a mutable byte array in a linear context.
+|||
+||| Note: In case you don't need to freeze the array in the end, using `alloc`
+|||       might be more convenient.
 export
+create : (n : Nat) -> (fun : FromMBuffer n a) -> a
+create n f = run1 $ \t => let A r t2 := newMBuffer n t in f r t2
+
+||| Allocate, use, and release a mutable byte array in a linear computation.
+|||
+||| Note: In case you want to freeze the buffer and return it in the
+|||       result, use `create`.
+export
+alloc : (n : Nat) -> (fun : WithMBuffer n a) -> a
+alloc n f = create n $ \r,t => let v # t2 := f r t in v # release r t2
+
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
+
+export %noinline
 copy :
      IBuffer m
   -> (srcOffset,dstOffset : Nat)
   -> (len : Nat)
   -> {auto 0 p1 : LTE (srcOffset + len) m}
   -> {auto 0 p2 : LTE (dstOffset + len) n}
-  -> MBuffer n
-  -@ MBuffer n
+  -> (r         : MBuffer n)
+  -> {auto 0 p  : Res r rs}
+  -> F1' rs
 copy (IB src) srcOffset dstOffset len (MB dst) =
-  let MkIORes () w2 :=
-        prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset) %MkWorld
-   in destroy w2 (MB dst)
+  ffi (prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset))
 
 ||| Copy the content of an immutable buffer to a new buffer.
 export
-thaw : {n : _} -> IBuffer n -> (1 fun : MBuffer n -@ Ur b) -> Ur b
+thaw : {n : _} -> IBuffer n -> (fun : FromMBuffer n b) -> b
 thaw src f =
-  alloc n $ \b =>
-    let b2 := copy src 0 0 n @{reflexive} @{reflexive} b
-     in f b2
+  create n $ \r,t => f r (copy src 0 0 n @{reflexive} @{reflexive} r t)
 
-||| Safely write a value to a mutable byte array.
+||| Wrap a mutable buffer in an `IBuffer` without copying.
 |||
-||| Since the array must be used exactly once, a "new" array (the
-||| same array wrapped in a new `MB`) must be returned, which will
-||| then again be used exactly once.
-export
-set : Fin n -> Bits8 -> MBuffer n -@ MBuffer n
-set m x (MB buf) = MB $ set' (finToNat m) x buf
-
-||| Safely read a value from a mutable byte array.
-|||
-||| This returns the values thus read with unrestricted quantity, paired
-||| with a new `MBuffer` of quantity one to be further used in the
-||| linear context. See implementation notes on `set` about some details,
-||| how this works.
-export
-get : Fin n -> MBuffer n -@ CRes Bits8 (MBuffer n)
-get m (MB buf) = prim__getByte buf (cast $ finToNat m) # MB buf
-
-||| Safely modify a value in a mutable byte array.
-|||
-||| Since mutable arrays must be used in a linear context, and this
-||| function "uses up" its input as far as the linearity checker is
-||| concerned, this returns a new `MBuffer` wrapper, which must then
-||| again be used exactly once.
-export
-modify : Fin n -> (Bits8 -> Bits8) -> MBuffer n -@ MBuffer n
-modify m f (MB buf) =
-  let v := prim__getByte buf (cast $ finToNat m)
-   in MB $ set' (finToNat m) (f v) buf
-
-||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
-|||
-||| It is not possible the extract and share the underlying `ArrayData`
-||| wrapped in an `IBuffer`, so we don't have to be afraid of shared mutable
-||| state: The interface of `IBuffer` does not support to further mutate
-||| the wrapped array.
+||| In order to make this safe, the associated linear token has to
+||| be discarded.
 |||
 ||| It is safe to only use a prefix of a properly constructed array,
 ||| therefore we are free to give the resulting array a smaller size.
-||| Most of the time, we'd like to use the whole array, in which case
-||| we can just use `freeze`.
-export
-freezeLTE : (0 m : Nat) -> (0 _ : LTE m n) => MBuffer n -@ Ur (IBuffer m)
-freezeLTE _ (MB buf) = MkBang $ IB buf
-
-||| Wrap a mutable byte array in an `IBuffer`, which can then be freely shared.
-|||
-||| See `freezeLTE` for some additional notes about how this works under
-||| the hood.
+||| Most of the time, we'd like to use the whole buffer, in which case
+||| we can just use `freezeBufAt`.
 export %inline
-freeze : MBuffer n -@ Ur (IBuffer n)
-freeze = freezeLTE n @{reflexive}
+freezeLTE :
+     {auto 0 _ : LTE m n}
+  -> (r        : MBuffer n)
+  -> {auto 0 p : Res r rs}
+  -> (0 m : Nat)
+  -> (1 t : T1 rs)
+  -> R1 (Drop rs p) (IBuffer m)
+freezeLTE (MB buf) _ t = IB buf # unsafeRelease p t
 
-||| Safely discard a linear mutable array.
 export %inline
-discard : MBuffer n -@ ()
-discard (MB _) = ()
-
-||| Safely discard a linear mutable array, returning a non-linear
-||| result at the same time.
-export %inline
-discarding : (1 _ : MBuffer n) -> x -> x
-discarding (MB _) x = x
+freeze :
+     (r : MBuffer n)
+  -> {auto 0 p : Res r rs}
+  -> (1 t : T1 rs)
+  -> R1 (Drop rs p) (IBuffer n)
+freeze r = freezeLTE @{reflexive} r n
 
 ||| Release a mutable linear buffer to `IO`, thus making it freely
 ||| shareable.
 export %inline
-toIO : MBuffer n -@ Ur (IO Buffer)
-toIO (MB buf) = MkBang (pure buf)
+toIO :
+     (r : MBuffer n)
+  -> {auto 0 p : Res r rs}
+  -> (1 t : T1 rs)
+  -> R1 (Drop rs p) (IO Buffer)
+toIO (MB buf) t = pure buf # unsafeRelease p t
 
 --------------------------------------------------------------------------------
 --          Reading and Writing Files
@@ -255,7 +266,9 @@ writeMBuffer :
   -> File
   -> (offset,len : Nat)
   -> {auto 0 prf : LTE (offset + len) n}
-  -> MBuffer n
-  -@ Ur (io (Either (FileError,Int) ()))
-writeMBuffer h o s (MB buf) =
-  MkBang $ writeBufferData h buf (cast o) (cast s)
+  -> (r : MBuffer n)
+  -> {auto 0 p : Res r rs}
+  -> T1 rs
+  -> R1 (Drop rs p) (io (Either (FileError,Int) ()))
+writeMBuffer h o s (MB b) t =
+  writeBufferData h b (cast o) (cast s) # unsafeRelease p t

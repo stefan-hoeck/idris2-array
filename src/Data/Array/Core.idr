@@ -3,8 +3,9 @@
 module Data.Array.Core
 
 import Data.Linear
-import public Data.Fin
-import public Data.Nat
+import Data.Linear.Token
+import Data.Fin
+import Data.Nat
 
 %default total
 
@@ -12,19 +13,21 @@ import public Data.Nat
 --          Raw Primitives
 --------------------------------------------------------------------------------
 
-data ArrayData : Type -> Type where [external]
+%foreign "scheme:(lambda (n x) (make-vector n x))"
+         "javascript:lambda:(n,x) => new Array(n).fill(x)"
+prim__fillArr : Bits32 -> AnyPtr -> AnyPtr
 
-%extern prim__newArray : forall a . Bits32 -> a -> %World -> (ArrayData a)
-%extern prim__arrayGet : forall a . ArrayData a -> Bits32 -> %World -> a
-%extern prim__arraySet : forall a . ArrayData a -> Bits32 -> a -> PrimIO ()
+%foreign "scheme:(lambda (x) (make-vector x))"
+         "javascript:lambda:(n) => new Array(n)"
+prim__newArr : Bits32 -> AnyPtr
 
-destroy : (1 _ : %World) -> a -> a
-destroy %MkWorld x = x
+%foreign "scheme:(lambda (v x) (vector-ref v x))"
+         "javascript:lambda:(v,x) => v[x]"
+%extern prim__arrGet : AnyPtr -> Bits32 -> AnyPtr
 
-set' : (m : Nat) -> a -> ArrayData a -> ArrayData a
-set' m y z =
-  let MkIORes () w2 := prim__arraySet z (cast m) y %MkWorld
-   in destroy w2 z
+%foreign "scheme:(lambda (v x w t) (begin (vector-set! v x w) t))"
+         "javascript:lambda:(v,x,w,t) => {v[x] = w; return t}"
+%extern prim__arrSet : AnyPtr -> Bits32 -> AnyPtr -> (1 t : AnyPtr) -> AnyPtr
 
 --------------------------------------------------------------------------------
 --          Immutable Arrays
@@ -34,12 +37,12 @@ set' m y z =
 export
 record IArray (n : Nat) (a : Type) where
   constructor IA
-  arr : ArrayData a
+  arr : AnyPtr
 
 ||| Safely access a value in an array at the given position.
 export
 at : IArray n a -> Fin n -> a
-at (IA ad) m = prim__arrayGet ad (cast $ finToNat m) %MkWorld
+at (IA ad) m = believe_me (prim__arrGet ad (cast $ finToNat m))
 
 ||| We can wrap a prefix of an array in O(1) simply by giving it
 ||| a new size index.
@@ -55,40 +58,83 @@ take _ (IA arr) = IA arr
 --          Mutable Arrays
 --------------------------------------------------------------------------------
 
-||| An alias for the `!*` type constructor.
-|||
-||| `Ur` is an abbreviation for "unrestricted", meaning the wrapped value
-||| can be used an arbitrary number of times, even if the `Ur` itself is used
-||| in a linear context.
-public export
-0 Ur : Type -> Type
-Ur = (!*)
-
-||| An alias for the `Res a (const b)`, a dependent pair data type for
-||| wrapping its first argument with unrestricted quantity and its second
-||| with linear quantity.
-public export
-0 CRes : Type -> Type -> Type
-CRes a b = Res a (const b)
-
 ||| A mutable array.
 export
-record MArray (n : Nat) (a : Type) where
-  constructor MA
-  arr : ArrayData a
+data MArray : (n : Nat) -> (a : Type) -> Type where
+  MA : (arr : AnyPtr) -> MArray n a
 
-||| Allocate and release a mutable array in a linear context.
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
+
+||| Fills a new mutable bound to linear computation `s`.
+export %noinline
+newMArray : (n : Nat) -> a -> (1 t : T1 rs) -> A1 rs (MArray n a)
+newMArray n v t = A (MA (prim__fillArr (cast n) (believe_me v))) (unsafeBind t)
+
+export %noinline
+unsafeNewMArray : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MArray n a)
+unsafeNewMArray n t = A (MA (prim__newArr (cast n))) (unsafeBind t)
+
+||| Safely write a value to a mutable array.
+export %noinline
+set : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> a -> F1' rs
+set (MA arr) ix v = ffi (prim__arrSet arr (cast $ finToNat ix) (believe_me v))
+
+||| Safely read a value from a mutable array.
 |||
-||| Function `fun` must use the given array exactly once, while
-||| its result must be wrapped in a `Ur`, guaranteeing, that the
-||| mutable array will never be used outside of `fun`, especially
-||| that the result `b` does not hold a reference to the mutable
-||| array.
-export
-alloc : (n : Nat) -> a -> (1 fun : MArray n a -@ Ur b) -> Ur b
-alloc n v f = f (MA $ prim__newArray (cast n) v %MkWorld)
+||| This returns the values thus read with unrestricted quantity, paired
+||| with a new linear token of quantity one to be further used in the
+||| linear context.
+export %noinline
+get : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> F1 rs a
+get (MA arr) ix t = believe_me (prim__arrGet arr (cast $ finToNat ix)) # t
 
-||| Like `alloc` but the initially created array will not hold any
+||| Safely modify a value in a mutable array.
+export
+modify : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> (a -> a) -> F1' rs
+modify r ix f t = let v # t1 := get r ix t in set r ix (f v) t1
+
+||| Release a mutable array.
+|||
+||| Afterwards, it can no longer be use with the given linear token.
+export %inline
+release :
+     (0 r : MArray n a)
+  -> {auto 0 p : Res r rs}
+  -> (1 t : T1 rs)
+  -> T1 (Drop rs p)
+release _ = unsafeRelease p
+
+--------------------------------------------------------------------------------
+-- Allocating Arrays
+--------------------------------------------------------------------------------
+
+public export
+0 WithMArray : Nat -> (a,b : Type) -> Type
+WithMArray n a b = (r : MArray n a) -> F1 [r] b
+
+public export
+0 FromMArray : Nat -> (a,b : Type) -> Type
+FromMArray n a b = (r : MArray n a) -> (1 t : T1 [r]) -> R1 [] b
+
+||| Allocate and potentially freeze a mutable array in a linear context.
+|||
+||| Note: In case you don't need to freeze the array in the end, using `alloc`
+|||       might be more convenient.
+export
+create : (n : Nat) -> a -> (fun : FromMArray n a b) -> b
+create n v f = run1 $ \t => let A r t2 := newMArray n v t in f r t2
+
+||| Allocate, use, and release a mutable array in a linear computation.
+|||
+||| Note: In case you want to freeze the array and return it in the
+|||       result, use `create`.
+export
+alloc : (n : Nat) -> a -> (fun : WithMArray n a b) -> b
+alloc n v f = create n v $ \r,t => let v # t2 := f r t in v # release r t2
+
+||| Like `create` but the initially created array will not hold any
 ||| sensible data.
 |||
 ||| Use with care: Client code is responsible to properly initialize
@@ -98,46 +144,22 @@ alloc n v f = f (MA $ prim__newArray (cast n) v %MkWorld)
 |||
 ||| See for instance the implementation of `filter` or `mapMaybe`.
 export
-unsafeAlloc : (n : Nat) -> (MArray n a -@ Ur b) -@ Ur b
-unsafeAlloc n f = alloc n (believe_me ()) f
+unsafeCreate : (n : Nat) -> (fun : FromMArray n a b) -> b
+unsafeCreate n f = run1 $ \t => let A r t2 := unsafeNewMArray n t in f r t2
 
-||| Safely write a value to a mutable array.
+||| Like `alloc` but the initially created array will not hold any
+||| sensible data.
 |||
-||| Since the array must be used exactly once, a "new" array (the
-||| same array wrapped in a new `MA`) must be returned, which will
-||| then again be used exactly once.
+||| Use with care: Client code is responsible to properly initialize
+||| the array with data. This is useful for creating arrays of unknown
+||| size, when it is not immediately clear whether it will hold any
+||| data at all.
 |||
-||| Implementation note: This works, because the `ArrayData` value
-||| wrapped in an `MArray` has unrestricted quantity. So "using an `MArray`
-||| exactly once" means "pattern match on the value, extract the inner
-||| array data, and use it as often as you like". This is the reason why
-||| `MArray` and `IArray` are not `public export`: We don't want to leak
-||| the wrapped `ArrayData` to the outer world.
+||| See for instance the implementation of `filter` or `mapMaybe`.
 export
-set : Fin n -> a -> MArray n a -@ MArray n a
-set m x (MA arr) = MA $ set' (finToNat m) x arr
-
-||| Safely read a value from a mutable array.
-|||
-||| This returns the values thus read with unrestricted quantity, paired
-||| with a new `MArray` of quantity one to be further used in the
-||| linear context. See implementation notes on `set` about some details,
-||| how this works.
-export
-get : Fin n -> MArray n a -@ CRes a (MArray n a)
-get m (MA arr) = prim__arrayGet arr (cast $ finToNat m) %MkWorld # MA arr
-
-||| Safely modify a value in a mutable array.
-|||
-||| Since mutable arrays must be used in a linear context, and this
-||| function "uses up" its input as far as the linearity checker is
-||| concerned, this returns a new `MArray` wrapper, which must then
-||| again be used exactly once.
-export
-modify : Fin n -> (a -> a) -> MArray n a -@ MArray n a
-modify m f (MA arr) =
-  let v := prim__arrayGet arr (cast $ finToNat m) %MkWorld
-   in MA $ set' (finToNat m) (f v) arr
+unsafeAlloc : (n : Nat) -> (fun : WithMArray n a b) -> b
+unsafeAlloc n f =
+  unsafeCreate n $ \r,t => let v # t2 := f r t in v # release r t2
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
@@ -150,25 +172,23 @@ modify m f (MA arr) =
 ||| therefore we are free to give the resulting array a smaller size.
 ||| Most of the time, we'd like to use the whole array, in which case
 ||| we can just use `freeze`.
-export
-freezeLTE : (0 m : Nat) -> (0 _ : LTE m n) => MArray n a -@ Ur (IArray m a)
-freezeLTE _ (MA arr) = MkBang $ IA arr
+export %inline
+freezeLTE :
+     {auto 0 _ : LTE m n}
+  -> (r        : MArray n a)
+  -> {auto 0 p : Res r rs}
+  -> (0 m : Nat)
+  -> (1 t : T1 rs)
+  -> R1 (Drop rs p) (IArray m a)
+freezeLTE (MA arr) _ t = IA arr # unsafeRelease p t
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
-||| See `freezeLTE` for some additional notes about how this works under
-||| the hood.
+||| See `freezeLTE` for some additional notes about how this works under the hood.
 export %inline
-freeze : MArray n a -@ Ur (IArray n a)
-freeze = freezeLTE n @{reflexive}
-
-||| Safely discard a linear mutable array.
-export %inline
-discard : MArray n a -@ ()
-discard (MA _) = ()
-
-||| Safely discard a linear mutable array, returning a non-linear
-||| result at the same time.
-export %inline
-discarding : (1 _ : MArray n a) -> x -> x
-discarding (MA _) x = x
+freeze :
+     (r : MArray n a)
+  -> {auto 0 p : Res r rs}
+  -> (1 t : T1 rs)
+  -> R1 (Drop rs p) (IArray n a)
+freeze r = freezeLTE @{reflexive} r n

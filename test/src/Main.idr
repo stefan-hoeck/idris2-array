@@ -1,6 +1,8 @@
 module Main
 
+import Array.Manual
 import Array
+import Buffer.Manual
 import Buffer
 import Index
 import Hedgehog
@@ -9,7 +11,9 @@ import Hedgehog
 
 main : IO ()
 main = test
-  [ Array.props
+  [ Array.Manual.props
+  , Array.props
   , Index.props
+  , Buffer.Manual.props
   , Buffer.props
   ]

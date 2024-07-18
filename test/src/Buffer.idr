@@ -1,6 +1,7 @@
 module Buffer
 
 import Control.Monad.Identity
+import Data.Buffer
 import Data.Buffer.Core
 import Data.Buffer.Indexed
 import Data.SOP
@@ -79,6 +80,12 @@ prop_from_to_list = property $ do
   vs <- forAll (list (linear 0 10) anyBits8)
   toList (bufferL vs) === vs
 
+prop_from_to_string : Property
+prop_from_to_string = property $ do
+  s <- forAll (string (linear 0 10) printableUnicode)
+  let buf := Buffer.Core.fromString s
+  toString buf 0 (cast $ stringByteLength s) === s
+
 prop_from_to_vect : Property
 prop_from_to_vect = property $ do
   n  <- forAll (nat $ linear 0 20)
@@ -141,6 +148,7 @@ props = MkGroup "Buffer"
   , ("prop_from_to_list", prop_from_to_list)
   , ("prop_from_to_vect", prop_from_to_vect)
   , ("prop_from_to_rev_vect", prop_from_to_rev_vect)
+  , ("prop_from_to_string", prop_from_to_string)
   , ("prop_foldl", prop_foldl)
   , ("prop_foldr", prop_foldr)
   , ("prop_generate", prop_generate)
