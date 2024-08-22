@@ -89,8 +89,10 @@ writeList :
   -> (ys : List Bits8)
   -> {auto p : Suffix ys xs}
   -> F1' rs
-writeList r []        t = t
-writeList r (y :: ys) t = writeList {xs} r ys (setAtSuffix r p y t)
+writeList r []        t = () # t
+writeList r (y :: ys) t =
+  let _ # t := setAtSuffix r p y t
+   in writeList {xs} r ys t
 
 parameters {0 rs : Resources}
            (r : MBuffer n)
@@ -99,26 +101,34 @@ parameters {0 rs : Resources}
   ||| Writes the data from a vector to a mutable array.
   export
   writeVect : Vect k Bits8 -> Ix k n => F1' rs
-  writeVect           []        t = t
-  writeVect {k = S m} (y :: ys) t = writeVect ys (setIx r m y t)
+  writeVect           []        t = () # t
+  writeVect {k = S m} (y :: ys) t =
+    let _ # t := setIx r m y t
+     in writeVect ys t
 
   ||| Writes the data from a vector to a mutable array in reverse order.
   export
   writeVectRev : (m : Nat) -> Vect k Bits8 -> (0 _ : LTE m n) => F1' rs
-  writeVectRev (S l) (y :: ys) t = writeVectRev l ys (setNat r l y t)
-  writeVectRev _     _         t = t
+  writeVectRev (S l) (y :: ys) t =
+    let _ # t := setNat r l y t
+     in writeVectRev l ys t
+  writeVectRev _     _         t = () # t
 
   ||| Overwrite the values in a mutable array from the
   ||| given index downward with the result of the given function.
   export
   genFrom : (m : Nat) -> (0 _ : LTE m n) => (Fin n -> Bits8) -> F1' rs
-  genFrom 0     f t = t
-  genFrom (S k) f t = genFrom k f (setNat r k (f $ natToFinLT k) t)
+  genFrom 0     f t = () # t
+  genFrom (S k) f t =
+    let _ # t := setNat r k (f $ natToFinLT k) t
+     in genFrom k f t
 
   ||| Overwrite the values in a mutable array from the
   ||| given index upward with the results of applying the given
   ||| function repeatedly.
   export
   iterateFrom : (m : Nat) -> (ix : Ix m n) => (Bits8 -> Bits8) -> Bits8 -> F1' rs
-  iterateFrom 0     f v t = t
-  iterateFrom (S k) f v t = iterateFrom k f (f v) (setIx r k v t)
+  iterateFrom 0     f v t = () # t
+  iterateFrom (S k) f v t =
+    let _ # t := setIx r k v t
+     in iterateFrom k f (f v) t

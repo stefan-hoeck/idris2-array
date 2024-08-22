@@ -17,9 +17,9 @@ import System.File
          "javascript:lambda:(buf,offset)=>buf[offset]"
 prim__getByte : Buffer -> (offset : Bits32) -> Bits8
 
-%foreign "scheme:(lambda (b o v t) (begin (bytevector-u8-set! b o v) t))"
+%foreign "scheme:(lambda (b o v) (bytevector-u8-set! b o v))"
          "javascript:lambda:(buf,offset,value,t)=>{buf[offset] = value; return t}"
-prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> (1 t : AnyPtr) -> AnyPtr
+prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> PrimIO ()
 
 %foreign "scheme:(lambda (n) (make-bytevector n 0))"
          "javascript:lambda:s=>new Uint8Array(s)"
@@ -33,10 +33,10 @@ prim__getString : Buffer -> (offset,len : Bits32) -> String
          "javascript:lambda:(v)=> new TextEncoder().encode(v)"
 prim__fromString : (val : String) -> Buffer
 
-%foreign "scheme:(lambda (b1 o1 len b2 o2 t) (begin (bytevector-copy! b1 o1 b2 o2 len) t))"
+%foreign "scheme:(lambda (b1 o1 len b2 o2) (bytevector-copy! b1 o1 b2 o2 len))"
          "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
 prim__copy : (src : Buffer) -> (srcOffset, len : Bits32) ->
-             (dst : Buffer) -> (dstOffset : Bits32) -> (1 t : AnyPtr) -> AnyPtr
+             (dst : Buffer) -> (dstOffset : Bits32) -> PrimIO ()
 
 --------------------------------------------------------------------------------
 --          Immutable Buffers
@@ -104,17 +104,17 @@ data MBuffer : (n : Nat) -> Type where
 --------------------------------------------------------------------------------
 
 ||| Fills a new mutable bound to linear computation `s`.
-export %noinline
+export %inline
 newMBuffer : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MBuffer n)
 newMBuffer n t = A (MB (prim__newBuf (cast n))) (unsafeBind t)
 
 ||| Safely write a value to a mutable byte vector.
-export %noinline
+export %inline
 set : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> Bits8 -> F1' rs
 set (MB buf) ix v = ffi (prim__setByte buf (cast $ finToNat ix) v)
 
 ||| Safely read a value from a mutable byte array.
-export %noinline
+export %inline
 get : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> F1 rs Bits8
 get (MB buf) ix t = prim__getByte buf (cast $ finToNat ix) # t
 
@@ -132,11 +132,7 @@ modify r m f t = let v # t := get r m t in set r m (f v) t
 |||
 ||| Afterwards, it can no longer be use with the given linear token.
 export %inline
-release :
-     (0 r : MBuffer n)
-  -> {auto 0 p : Res r rs}
-  -> (1 t : T1 rs)
-  -> T1 (Drop rs p)
+release : (0 r : MBuffer n) -> (0 p : Res r rs) => C1' rs (Drop rs p)
 release _ = unsafeRelease p
 
 --------------------------------------------------------------------------------
@@ -149,7 +145,7 @@ WithMBuffer n a = (r : MBuffer n) -> F1 [r] a
 
 public export
 0 FromMBuffer : Nat -> (a : Type) -> Type
-FromMBuffer n a = (r : MBuffer n) -> (1 t : T1 [r]) -> R1 [] a
+FromMBuffer n a = (r : MBuffer n) -> C1 [r] [] a
 
 ||| Allocate and potentially freeze a mutable byte array in a linear context.
 |||
@@ -157,7 +153,7 @@ FromMBuffer n a = (r : MBuffer n) -> (1 t : T1 [r]) -> R1 [] a
 |||       might be more convenient.
 export
 create : (n : Nat) -> (fun : FromMBuffer n a) -> a
-create n f = run1 $ \t => let A r t2 := newMBuffer n t in f r t2
+create n f = run1 $ \t => let A r t := newMBuffer n t in f r t
 
 ||| Allocate, use, and release a mutable byte array in a linear computation.
 |||
@@ -165,7 +161,11 @@ create n f = run1 $ \t => let A r t2 := newMBuffer n t in f r t2
 |||       result, use `create`.
 export
 alloc : (n : Nat) -> (fun : WithMBuffer n a) -> a
-alloc n f = create n $ \r,t => let v # t2 := f r t in v # release r t2
+alloc n f =
+  create n $ \r,t =>
+    let v # t := f r t
+        _ # t := release r t
+     in v # t
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -188,7 +188,9 @@ copy (IB src) srcOffset dstOffset len (MB dst) =
 export
 thaw : {n : _} -> IBuffer n -> (fun : FromMBuffer n b) -> b
 thaw src f =
-  create n $ \r,t => f r (copy src 0 0 n @{reflexive} @{reflexive} r t)
+  create n $ \r,t =>
+    let _ # t := copy src 0 0 n @{reflexive} @{reflexive} r t
+     in f r t
 
 ||| Wrap a mutable buffer in an `IBuffer` without copying.
 |||
@@ -207,7 +209,7 @@ freezeLTE :
   -> (0 m : Nat)
   -> (1 t : T1 rs)
   -> R1 (Drop rs p) (IBuffer m)
-freezeLTE (MB buf) _ t = IB buf # unsafeRelease p t
+freezeLTE (MB buf) _ t = let _ # t := unsafeRelease p t in IB buf # t
 
 export %inline
 freeze :
@@ -225,7 +227,7 @@ toIO :
   -> {auto 0 p : Res r rs}
   -> (1 t : T1 rs)
   -> R1 (Drop rs p) (IO Buffer)
-toIO (MB buf) t = pure buf # unsafeRelease p t
+toIO (MB buf) t = let _ # t := unsafeRelease p t in pure buf # t
 
 --------------------------------------------------------------------------------
 --          Reading and Writing Files
@@ -271,4 +273,4 @@ writeMBuffer :
   -> T1 rs
   -> R1 (Drop rs p) (io (Either (FileError,Int) ()))
 writeMBuffer h o s (MB b) t =
-  writeBufferData h b (cast o) (cast s) # unsafeRelease p t
+  let _ # t := unsafeRelease p t in writeBufferData h b (cast o) (cast s) # t
