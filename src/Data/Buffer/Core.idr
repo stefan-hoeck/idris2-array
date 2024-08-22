@@ -161,7 +161,11 @@ create n f = run1 $ \t => let A r t := newMBuffer n t in f r t
 |||       result, use `create`.
 export
 alloc : (n : Nat) -> (fun : WithMBuffer n a) -> a
-alloc n f = create n $ \r,t => let v # t := f r t in v # release r t
+alloc n f =
+  create n $ \r,t =>
+    let v # t := f r t
+        _ # t := release r t
+     in v # t
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -184,7 +188,9 @@ copy (IB src) srcOffset dstOffset len (MB dst) =
 export
 thaw : {n : _} -> IBuffer n -> (fun : FromMBuffer n b) -> b
 thaw src f =
-  create n $ \r,t => f r (copy src 0 0 n @{reflexive} @{reflexive} r t)
+  create n $ \r,t =>
+    let _ # t := copy src 0 0 n @{reflexive} @{reflexive} r t
+     in f r t
 
 ||| Wrap a mutable buffer in an `IBuffer` without copying.
 |||
@@ -203,7 +209,7 @@ freezeLTE :
   -> (0 m : Nat)
   -> (1 t : T1 rs)
   -> R1 (Drop rs p) (IBuffer m)
-freezeLTE (MB buf) _ t = IB buf # unsafeRelease p t
+freezeLTE (MB buf) _ t = let _ # t := unsafeRelease p t in IB buf # t
 
 export %inline
 freeze :
@@ -221,7 +227,7 @@ toIO :
   -> {auto 0 p : Res r rs}
   -> (1 t : T1 rs)
   -> R1 (Drop rs p) (IO Buffer)
-toIO (MB buf) t = pure buf # unsafeRelease p t
+toIO (MB buf) t = let _ # t := unsafeRelease p t in pure buf # t
 
 --------------------------------------------------------------------------------
 --          Reading and Writing Files
@@ -267,4 +273,4 @@ writeMBuffer :
   -> T1 rs
   -> R1 (Drop rs p) (io (Either (FileError,Int) ()))
 writeMBuffer h o s (MB b) t =
-  writeBufferData h b (cast o) (cast s) # unsafeRelease p t
+  let _ # t := unsafeRelease p t in writeBufferData h b (cast o) (cast s) # t
