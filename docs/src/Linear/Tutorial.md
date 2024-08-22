@@ -122,7 +122,7 @@ Before we continue, we introduce a simple operator for describing linear
 function types a bit more concisely:
 
 ```idris
-infixr 0 -@
+export infixr 0 -@
 
 (-@) : Type -> Type -> Type
 a -@ b = (1 _ : a) -> b

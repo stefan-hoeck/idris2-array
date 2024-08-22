@@ -36,12 +36,17 @@ empty = create 0 $ \r,t => freeze r t
 export %inline
 bufferL : (ls : List Bits8) -> IBuffer (length ls)
 bufferL xs =
-  create (length xs) $ \r,t => freeze r (writeList {xs} r xs t)
+  create (length xs) $ \r,t =>
+    let _ # t := writeList {xs} r xs t
+     in freeze r t
 
 ||| Copy the values in a vector to an array of the same length.
 export %inline
 buffer : {n : _} -> Vect n Bits8 -> IBuffer n
-buffer xs = create n $ \r,t => freeze r (writeVect r xs t)
+buffer xs =
+  create n $ \r,t =>
+    let _ # t := writeVect r xs t
+     in freeze r t
 
 ||| Copy the values in a vector to an array of the same length
 ||| in reverse order.
@@ -50,13 +55,19 @@ buffer xs = create n $ \r,t => freeze r (writeVect r xs t)
 ||| from tail to head for instance when parsing some data.
 export %inline
 revBuffer : {n : _} -> Vect n Bits8 -> IBuffer n
-revBuffer xs = create n $ \r,t => freeze r (writeVectRev r n xs t)
+revBuffer xs =
+  create n $ \r,t =>
+    let _ # t := writeVectRev r n xs t
+     in freeze r t
 
 ||| Generate an immutable array of the given size using
 ||| the given iteration function.
 export %inline
 generate : (n : Nat) -> (Fin n -> Bits8) -> IBuffer n
-generate n f = create n $ \r,t => freeze r (genFrom r n f t)
+generate n f =
+  create n $ \r,t =>
+    let _ # t := genFrom r n f t
+     in freeze r t
 
 ||| Fill an immutable array of the given size with the given value
 export %inline
@@ -67,7 +78,10 @@ fill n = generate n . const
 ||| results of repeatedly applying `f` to the initial value.
 export %inline
 iterate : (n : Nat) -> (f : Bits8 -> Bits8) -> Bits8 -> IBuffer n
-iterate n f v = create n $ \r,t => freeze r (iterateFrom r n f v t)
+iterate n f v =
+  create n $ \r,t =>
+    let _ # t := iterateFrom r n f v t
+     in freeze r t
 
 ||| Copy the content of a byte array to a new array.
 |||
@@ -305,6 +319,6 @@ export
 append : {m,n : _} -> IBuffer m -> IBuffer n -> IBuffer (m + n)
 append src1 src2 =
   create (m+n) $ \r,t =>
-    let t := copy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
-        t := copy src2 0 m n @{reflexive} @{reflexive} r t
+    let _ # t := copy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
+        _ # t := copy src2 0 m n @{reflexive} @{reflexive} r t
      in freeze r t

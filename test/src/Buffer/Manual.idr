@@ -17,7 +17,7 @@ getOnly r = get r 3
 
 setget : WithMBuffer 10 (Bits8,Bits8)
 setget r t =
-  let t := set r 3 127 t
+  let _  # t := set r 3 127 t
       s1 # t := get r 3 t
       s2 # t := get r 2 t
    in (s1,s2) # t
@@ -38,7 +38,9 @@ writeVct r = Syntax.do
   [| MkPair (get r 0) (get r 1) |]
 
 writeVctUr : FromMBuffer 4 (IBuffer 4)
-writeVctUr r t = freeze r (writeVect r [1,2,3,4] t)
+writeVctUr r t =
+  let _ # t := writeVect r [1,2,3,4] t
+   in freeze r t
 
 export
 props : Group
