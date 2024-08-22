@@ -3,6 +3,7 @@ module Data.Array.Mutable
 import public Data.Linear.Token
 import public Data.Array.Core
 import public Data.Array.Index
+
 import Data.List
 import Data.Vect
 
@@ -86,8 +87,10 @@ writeList :
   -> (ys : List a)
   -> {auto p : Suffix ys xs}
   -> F1' rs
-writeList r []        t = t
-writeList r (y :: ys) t = writeList {xs} r ys (setAtSuffix r p y t)
+writeList r []        t = () # t
+writeList r (y :: ys) t =
+  let _ # t := setAtSuffix r p y t
+   in writeList {xs} r ys t
 
 ||| Writes the data from a list to a mutable array.
 |||
@@ -100,9 +103,10 @@ writeListWith :
   -> (f : a -> b)
   -> {auto p : Suffix ys xs}
   -> F1' rs
-writeListWith r []        f t = t
+writeListWith r []        f t = () # t
 writeListWith r (y :: ys) f t =
-  writeListWith {xs} r ys f (setAtSuffix r p (f y) t)
+  let _ # t := setAtSuffix r p (f y) t
+   in writeListWith {xs} r ys f t
 
 parameters {0 rs : Resources}
            (r : MArray n a)
@@ -111,54 +115,79 @@ parameters {0 rs : Resources}
   ||| Writes the data from a vector to a mutable array.
   export
   writeVect : Vect k a -> Ix k n => F1' rs
-  writeVect           []        x = x
-  writeVect {k = S m} (y :: ys) x = writeVect ys (setIx r m y x)
+  writeVect           []        t = () # t
+  writeVect {k = S m} (y :: ys) t =
+    let _ # t := setIx r m y t
+     in writeVect ys t
 
   ||| Writes the data from a vector to a mutable array in reverse order.
   export
   writeVectRev : (m : Nat) -> Vect k a -> (0 _ : LTE m n) => F1' rs
-  writeVectRev (S l) (y :: ys) x = writeVectRev l ys (setNat r l y x)
-  writeVectRev _     _         x = x
+  writeVectRev (S l) (y :: ys) t =
+    let _ # t := setNat r l y t
+     in writeVectRev l ys t
+  writeVectRev _     _         t = () # t
 
   ||| Overwrite the values in a mutable array from the
   ||| given index downward with the result of the given function.
   export
   genFrom : (m : Nat) -> (0 _ : LTE m n) => (Fin n -> a) -> F1' rs
-  genFrom 0     f t = t
-  genFrom (S k) f t = genFrom k f (setNat r k (f $ natToFinLT k) t)
+  genFrom 0     f t = () # t
+  genFrom (S k) f t =
+    let _ # t := setNat r k (f $ natToFinLT k) t
+     in genFrom k f t
 
   ||| Overwrite the values in a mutable array from the
   ||| given index upward with the results of applying the given
   ||| function repeatedly.
   export
   iterateFrom : (m : Nat) -> (ix : Ix m n) => (a -> a) -> a -> F1' rs
-  iterateFrom 0     f v t = t
-  iterateFrom (S k) f v t = iterateFrom k f (f v) (setIx r k v t)
+  iterateFrom 0     f v t = () # t
+  iterateFrom (S k) f v t =
+    let _ # t := setIx r k v t
+     in iterateFrom k f (f v) t
 
 export
 allocList : (xs : List a) -> FromMArray (length xs) a b -> b
-allocList xs g = unsafeCreate (length xs) $ \r,t => g r (writeList {xs} r xs t)
+allocList xs g =
+  unsafeCreate (length xs) $ \r,t =>
+    let _ # t := writeList {xs} r xs t
+     in g r t
 
 export
 allocListWith : (xs : List a) -> (a -> b) -> FromMArray (length xs) b c -> c
 allocListWith xs f g =
-  unsafeCreate (length xs) $ \r,t => g r (writeListWith {xs} r xs f t)
+  unsafeCreate (length xs) $ \r,t =>
+    let _ # t := writeListWith {xs} r xs f t
+     in g r t
 
 export
 allocVect : {n : _} -> Vect n a -> FromMArray n a b -> b
-allocVect xs g = unsafeCreate n $ \r,t => g r (writeVect r xs t)
+allocVect xs g =
+  unsafeCreate n $ \r,t =>
+    let _ # t := writeVect r xs t
+     in g r t
 
 export
 allocVectRev : {n : _} -> Vect n a -> FromMArray n a b -> b
-allocVectRev xs g = unsafeCreate n $ \r,t => g r (writeVectRev r n xs t)
+allocVectRev xs g =
+  unsafeCreate n $ \r,t =>
+    let _ # t := writeVectRev r n xs t
+     in g r t
 
 export
 allocGen : (n : Nat) -> (Fin n -> a) -> FromMArray n a b -> b
-allocGen n f g = unsafeCreate n $ \r,t => g r (genFrom r n f t)
+allocGen n f g =
+  unsafeCreate n $ \r,t =>
+    let _ # t := genFrom r n f t
+     in g r t
 
 export
 allocIter : (n : Nat) -> (a -> a) -> a -> FromMArray n a b -> b
-allocIter n f v g = unsafeCreate n $ \r,t => g r (iterateFrom r n f v t)
+allocIter n f v g =
+  unsafeCreate n $ \r,t =>
+    let _ # t := iterateFrom r n f v t
+     in g r t
 
 --------------------------------------------------------------------------------
 -- Linear Utilities

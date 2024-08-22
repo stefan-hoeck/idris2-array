@@ -94,7 +94,7 @@ fromPairs n v ps = create n v (go ps)
     go []            r t = freeze r t
     go ((x,v) :: xs) r t =
       case tryNatToFin x of
-        Just y  => go xs r (set r y v t)
+        Just y  => let _ # t := set r y v t in go xs r t
         Nothing => go xs r t
 
 --------------------------------------------------------------------------------
@@ -320,7 +320,9 @@ filterWithKey f arr = unsafeCreate n (go 0 n)
        in A cur res # t
     go cur (S j) r t =
       case f (ixToFin v) (ix arr j) of
-        True  => go (S cur) j r (setNat r cur {lt = curLT v prf} (ix arr j) t)
+        True  =>
+          let _ # t := setNat r cur {lt = curLT v prf} (ix arr j) t
+           in go (S cur) j r t
         False => go cur j r t
 
 ||| Filters the values in a graph according to the given predicate.
@@ -348,7 +350,9 @@ mapMaybeWithKey f arr = unsafeCreate n (go 0 n)
       let res # t := freezeLTE @{curLTE v prf} r cur t
        in A cur res # t
     go cur (S j) r t = case f (ixToFin v) (ix arr j) of
-      Just vb => go (S cur) j r (setNat r cur {lt = curLT v prf} vb t)
+      Just vb =>
+        let _ # t := setNat r cur {lt = curLT v prf} vb t
+         in go (S cur) j r t
       Nothing => go cur j r t
 
 ||| Map the values in a graph together with their corresponding indices
@@ -385,7 +389,9 @@ sconc :
   -> {auto 0 lte2 : LTE cur m}
   -> FromMArray n a (IArray n a)
 sconc pos   0     _   (sx :< A s x) r t = sconc pos s x   sx r t
-sconc (S j) (S k) x   sx            r t = sconc j k x sx r (setNat r j (atNat x k) t)
+sconc (S j) (S k) x   sx            r t =
+  let _ # t := setNat r j (atNat x k) t
+   in sconc j k x sx r t
 sconc _     _     _   _             r t = freeze r t
 
 ||| Concatenate a SnocList of arrays.

@@ -25,9 +25,9 @@ prim__newArr : Bits32 -> AnyPtr
          "javascript:lambda:(v,x) => v[x]"
 %extern prim__arrGet : AnyPtr -> Bits32 -> AnyPtr
 
-%foreign "scheme:(lambda (v x w t) (begin (vector-set! v x w) t))"
+%foreign "scheme:(lambda (v x w) (vector-set! v x w))"
          "javascript:lambda:(v,x,w,t) => {v[x] = w; return t}"
-%extern prim__arrSet : AnyPtr -> Bits32 -> AnyPtr -> (1 t : AnyPtr) -> AnyPtr
+%extern prim__arrSet : AnyPtr -> Bits32 -> AnyPtr -> PrimIO ()
 
 --------------------------------------------------------------------------------
 --          Immutable Arrays
@@ -68,16 +68,16 @@ data MArray : (n : Nat) -> (a : Type) -> Type where
 --------------------------------------------------------------------------------
 
 ||| Fills a new mutable bound to linear computation `s`.
-export %noinline
+export %inline
 newMArray : (n : Nat) -> a -> (1 t : T1 rs) -> A1 rs (MArray n a)
 newMArray n v t = A (MA (prim__fillArr (cast n) (believe_me v))) (unsafeBind t)
 
-export %noinline
+export %inline
 unsafeNewMArray : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MArray n a)
 unsafeNewMArray n t = A (MA (prim__newArr (cast n))) (unsafeBind t)
 
 ||| Safely write a value to a mutable array.
-export %noinline
+export %inline
 set : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> a -> F1' rs
 set (MA arr) ix v = ffi (prim__arrSet arr (cast $ finToNat ix) (believe_me v))
 
@@ -86,7 +86,7 @@ set (MA arr) ix v = ffi (prim__arrSet arr (cast $ finToNat ix) (believe_me v))
 ||| This returns the values thus read with unrestricted quantity, paired
 ||| with a new linear token of quantity one to be further used in the
 ||| linear context.
-export %noinline
+export %inline
 get : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> F1 rs a
 get (MA arr) ix t = believe_me (prim__arrGet arr (cast $ finToNat ix)) # t
 
@@ -99,11 +99,7 @@ modify r ix f t = let v # t1 := get r ix t in set r ix (f v) t1
 |||
 ||| Afterwards, it can no longer be use with the given linear token.
 export %inline
-release :
-     (0 r : MArray n a)
-  -> {auto 0 p : Res r rs}
-  -> (1 t : T1 rs)
-  -> T1 (Drop rs p)
+release : (0 r : MArray n a) -> (0 p : Res r rs) => C1' rs (Drop rs p)
 release _ = unsafeRelease p
 
 --------------------------------------------------------------------------------
@@ -116,7 +112,7 @@ WithMArray n a b = (r : MArray n a) -> F1 [r] b
 
 public export
 0 FromMArray : Nat -> (a,b : Type) -> Type
-FromMArray n a b = (r : MArray n a) -> (1 t : T1 [r]) -> R1 [] b
+FromMArray n a b = (r : MArray n a) -> C1 [r] [] b
 
 ||| Allocate and potentially freeze a mutable array in a linear context.
 |||
@@ -132,7 +128,11 @@ create n v f = run1 $ \t => let A r t2 := newMArray n v t in f r t2
 |||       result, use `create`.
 export
 alloc : (n : Nat) -> a -> (fun : WithMArray n a b) -> b
-alloc n v f = create n v $ \r,t => let v # t2 := f r t in v # release r t2
+alloc n v f =
+  create n v $ \r,t =>
+    let v # t := f r t
+        _ # t := release r t
+     in v # t
 
 ||| Like `create` but the initially created array will not hold any
 ||| sensible data.
@@ -159,7 +159,10 @@ unsafeCreate n f = run1 $ \t => let A r t2 := unsafeNewMArray n t in f r t2
 export
 unsafeAlloc : (n : Nat) -> (fun : WithMArray n a b) -> b
 unsafeAlloc n f =
-  unsafeCreate n $ \r,t => let v # t2 := f r t in v # release r t2
+  unsafeCreate n $ \r,t =>
+    let v # t := f r t
+        _ # t := release r t
+     in v # t
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
@@ -178,17 +181,14 @@ freezeLTE :
   -> (r        : MArray n a)
   -> {auto 0 p : Res r rs}
   -> (0 m : Nat)
-  -> (1 t : T1 rs)
-  -> R1 (Drop rs p) (IArray m a)
-freezeLTE (MA arr) _ t = IA arr # unsafeRelease p t
+  -> C1 rs (Drop rs p) (IArray m a)
+freezeLTE (MA arr) _ t =
+  let _ # t := unsafeRelease p t
+   in IA arr # t
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
 ||| See `freezeLTE` for some additional notes about how this works under the hood.
 export %inline
-freeze :
-     (r : MArray n a)
-  -> {auto 0 p : Res r rs}
-  -> (1 t : T1 rs)
-  -> R1 (Drop rs p) (IArray n a)
+freeze : (r : MArray n a) -> (0 p : Res r rs) => C1 rs (Drop rs p) (IArray n a)
 freeze r = freezeLTE @{reflexive} r n

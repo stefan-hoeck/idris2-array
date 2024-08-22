@@ -17,9 +17,9 @@ import System.File
          "javascript:lambda:(buf,offset)=>buf[offset]"
 prim__getByte : Buffer -> (offset : Bits32) -> Bits8
 
-%foreign "scheme:(lambda (b o v t) (begin (bytevector-u8-set! b o v) t))"
+%foreign "scheme:(lambda (b o v) (bytevector-u8-set! b o v))"
          "javascript:lambda:(buf,offset,value,t)=>{buf[offset] = value; return t}"
-prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> (1 t : AnyPtr) -> AnyPtr
+prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> PrimIO ()
 
 %foreign "scheme:(lambda (n) (make-bytevector n 0))"
          "javascript:lambda:s=>new Uint8Array(s)"
@@ -33,10 +33,10 @@ prim__getString : Buffer -> (offset,len : Bits32) -> String
          "javascript:lambda:(v)=> new TextEncoder().encode(v)"
 prim__fromString : (val : String) -> Buffer
 
-%foreign "scheme:(lambda (b1 o1 len b2 o2 t) (begin (bytevector-copy! b1 o1 b2 o2 len) t))"
+%foreign "scheme:(lambda (b1 o1 len b2 o2) (bytevector-copy! b1 o1 b2 o2 len))"
          "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
 prim__copy : (src : Buffer) -> (srcOffset, len : Bits32) ->
-             (dst : Buffer) -> (dstOffset : Bits32) -> (1 t : AnyPtr) -> AnyPtr
+             (dst : Buffer) -> (dstOffset : Bits32) -> PrimIO ()
 
 --------------------------------------------------------------------------------
 --          Immutable Buffers
@@ -132,11 +132,7 @@ modify r m f t = let v # t := get r m t in set r m (f v) t
 |||
 ||| Afterwards, it can no longer be use with the given linear token.
 export %inline
-release :
-     (0 r : MBuffer n)
-  -> {auto 0 p : Res r rs}
-  -> (1 t : T1 rs)
-  -> T1 (Drop rs p)
+release : (0 r : MBuffer n) -> (0 p : Res r rs) => C1' rs (Drop rs p)
 release _ = unsafeRelease p
 
 --------------------------------------------------------------------------------
@@ -149,7 +145,7 @@ WithMBuffer n a = (r : MBuffer n) -> F1 [r] a
 
 public export
 0 FromMBuffer : Nat -> (a : Type) -> Type
-FromMBuffer n a = (r : MBuffer n) -> (1 t : T1 [r]) -> R1 [] a
+FromMBuffer n a = (r : MBuffer n) -> C1 [r] [] a
 
 ||| Allocate and potentially freeze a mutable byte array in a linear context.
 |||
@@ -157,7 +153,7 @@ FromMBuffer n a = (r : MBuffer n) -> (1 t : T1 [r]) -> R1 [] a
 |||       might be more convenient.
 export
 create : (n : Nat) -> (fun : FromMBuffer n a) -> a
-create n f = run1 $ \t => let A r t2 := newMBuffer n t in f r t2
+create n f = run1 $ \t => let A r t := newMBuffer n t in f r t
 
 ||| Allocate, use, and release a mutable byte array in a linear computation.
 |||
@@ -165,7 +161,7 @@ create n f = run1 $ \t => let A r t2 := newMBuffer n t in f r t2
 |||       result, use `create`.
 export
 alloc : (n : Nat) -> (fun : WithMBuffer n a) -> a
-alloc n f = create n $ \r,t => let v # t2 := f r t in v # release r t2
+alloc n f = create n $ \r,t => let v # t := f r t in v # release r t
 
 --------------------------------------------------------------------------------
 -- Utilities
