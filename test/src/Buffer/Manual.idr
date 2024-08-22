@@ -3,9 +3,10 @@ module Buffer.Manual
 import Data.Buffer.Core
 import Data.Buffer.Indexed
 import Data.Buffer.Mutable
-import Data.Linear.Token.Syntax
 import Data.Vect
 import Hedgehog
+
+import Syntax.T1
 
 %default total
 
@@ -16,24 +17,24 @@ getOnly : WithMBuffer 10 Bits8
 getOnly r = get r 3
 
 setget : WithMBuffer 10 (Bits8,Bits8)
-setget r t =
-  let _  # t := set r 3 127 t
-      s1 # t := get r 3 t
-      s2 # t := get r 2 t
-   in (s1,s2) # t
+setget r = T1.do
+  set r 3 127
+  s1 <- get r 3
+  s2 <- get r 2
+  pure (s1,s2)
 
 setgetSyntax : WithMBuffer 10 (Bits8,Bits8)
-setgetSyntax r = Syntax.do
+setgetSyntax r = T1.do
   set r 3 155
   [| MkPair (get r 3) (get r 2) |]
 
 writeLst : WithMBuffer 4 (Bits8,Bits8)
-writeLst r = Syntax.do
+writeLst r = T1.do
   writeList r {xs = [1,2,3,4]} [1,2,3,4]
   [| MkPair (get r 0) (get r 1) |]
 
 writeVct : WithMBuffer 4 (Bits8,Bits8)
-writeVct r = Syntax.do
+writeVct r = T1.do
   writeVect r [1,2,3,4]
   [| MkPair (get r 0) (get r 1) |]
 

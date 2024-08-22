@@ -104,17 +104,17 @@ data MBuffer : (n : Nat) -> Type where
 --------------------------------------------------------------------------------
 
 ||| Fills a new mutable bound to linear computation `s`.
-export %noinline
+export %inline
 newMBuffer : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MBuffer n)
 newMBuffer n t = A (MB (prim__newBuf (cast n))) (unsafeBind t)
 
 ||| Safely write a value to a mutable byte vector.
-export %noinline
+export %inline
 set : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> Bits8 -> F1' rs
 set (MB buf) ix v = ffi (prim__setByte buf (cast $ finToNat ix) v)
 
 ||| Safely read a value from a mutable byte array.
-export %noinline
+export %inline
 get : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> F1 rs Bits8
 get (MB buf) ix t = prim__getByte buf (cast $ finToNat ix) # t
 

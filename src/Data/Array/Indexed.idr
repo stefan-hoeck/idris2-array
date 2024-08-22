@@ -4,6 +4,7 @@ import Data.Array.Mutable
 import Data.List
 import Data.Vect
 import Syntax.PreorderReasoning
+import Syntax.T1
 
 %default total
 
@@ -35,45 +36,45 @@ atNat arr x = at arr (natToFinLT x)
 --------------------------------------------------------------------------------
 
 ||| The empty array.
-export
+export %inline
 empty : IArray 0 a
-empty = unsafeCreate 0 $ \r,t => freeze r t
+empty = unsafeCreate 0 $ \r => freeze r
 
 ||| Copy the values in a list to an array of the same length.
-export
+export %inline
 arrayL : (ls : List a) -> IArray (length ls) a
-arrayL xs = allocList xs $ \r,t => freeze r t
+arrayL xs = allocList xs $ \r => freeze r
 
 ||| Copy the values in a vector to an array of the same length.
-export
+export %inline
 array : {n : _} -> Vect n a -> IArray n a
-array xs = allocVect xs $ \r,t => freeze r t
+array xs = allocVect xs $ \r => freeze r
 
 ||| Copy the values in a vector to an array of the same length
 ||| in reverse order.
 |||
 ||| This is useful if the values in the array have been collected
 ||| from tail to head for instance when parsing some data.
-export
+export %inline
 revArray : {n : _} -> Vect n a -> IArray n a
-revArray xs = allocVectRev xs $ \r,t => freeze r t
+revArray xs = allocVectRev xs $ \r => freeze r
 
 ||| Fill an immutable array of the given size with the given value
-export
+export %inline
 fill : (n : Nat) -> a -> IArray n a
-fill n v = create n v $ \r,t => freeze r t
+fill n v = create n v $ \r => freeze r
 
 ||| Generate an immutable array of the given size using
 ||| the given iteration function.
-export
+export %inline
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
-generate n f = allocGen n f $ \r,t => freeze r t
+generate n f = allocGen n f $ \r => freeze r
 
 ||| Generate an array of the given size by filling it with the
 ||| results of repeatedly applying `f` to the initial value.
-export
+export %inline
 iterate : (n : Nat) -> (f : a -> a) -> a -> IArray n a
-iterate n f v = allocIter n f v $ \r,t => freeze r t
+iterate n f v = allocIter n f v $ \r => freeze r
 
 ||| Copy the content of an array to a new array.
 |||
@@ -91,11 +92,11 @@ fromPairs : (n : Nat) -> a -> List (Nat,a) -> IArray n a
 fromPairs n v ps = create n v (go ps)
   where
     go : List (Nat,a) -> FromMArray n a (IArray n a)
-    go []            r t = freeze r t
-    go ((x,v) :: xs) r t =
+    go []            r = freeze r
+    go ((x,v) :: xs) r =
       case tryNatToFin x of
-        Just y  => let _ # t := set r y v t in go xs r t
-        Nothing => go xs r t
+        Just y  => T1.do set r y v; go xs r
+        Nothing => go xs r
 
 --------------------------------------------------------------------------------
 --          Eq and Ord
@@ -315,15 +316,15 @@ filterWithKey f arr = unsafeCreate n (go 0 n)
       -> {auto v : Ix x n}
       -> {auto 0 prf : LTE cur $ ixToNat v}
       -> FromMArray n a (Array a)
-    go cur 0 r t =
-      let res # t := freezeLTE @{curLTE v prf} r cur t
-       in A cur res # t
-    go cur (S j) r t =
+    go cur 0 r = T1.do
+      res <- freezeLTE @{curLTE v prf} r cur
+      pure $ A cur res
+    go cur (S j) r =
       case f (ixToFin v) (ix arr j) of
-        True  =>
-          let _ # t := setNat r cur {lt = curLT v prf} (ix arr j) t
-           in go (S cur) j r t
-        False => go cur j r t
+        True  => T1.do
+          setNat r cur {lt = curLT v prf} (ix arr j)
+          go (S cur) j r
+        False => go cur j r
 
 ||| Filters the values in a graph according to the given predicate.
 export %inline
@@ -346,14 +347,15 @@ mapMaybeWithKey f arr = unsafeCreate n (go 0 n)
       -> {auto v : Ix x n}
       -> {auto 0 prf : LTE cur $ ixToNat v}
       -> FromMArray n b (Array b)
-    go cur 0 r t =
-      let res # t := freezeLTE @{curLTE v prf} r cur t
-       in A cur res # t
-    go cur (S j) r t = case f (ixToFin v) (ix arr j) of
-      Just vb =>
-        let _ # t := setNat r cur {lt = curLT v prf} vb t
-         in go (S cur) j r t
-      Nothing => go cur j r t
+    go cur 0 r = T1.do
+      res <- freezeLTE @{curLTE v prf} r cur
+      pure $ A cur res
+    go cur (S j) r =
+      case f (ixToFin v) (ix arr j) of
+        Just vb => T1.do
+          setNat r cur {lt = curLT v prf} vb
+          go (S cur) j r
+        Nothing => go cur j r
 
 ||| Map the values in a graph together with their corresponding indices
 ||| over a function that might not return a result for all values.

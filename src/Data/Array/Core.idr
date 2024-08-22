@@ -7,27 +7,21 @@ import Data.Linear.Token
 import Data.Fin
 import Data.Nat
 
+import Syntax.T1
+
 %default total
 
 --------------------------------------------------------------------------------
 --          Raw Primitives
 --------------------------------------------------------------------------------
 
-%foreign "scheme:(lambda (n x) (make-vector n x))"
-         "javascript:lambda:(n,x) => new Array(n).fill(x)"
-prim__fillArr : Bits32 -> AnyPtr -> AnyPtr
-
 %foreign "scheme:(lambda (x) (make-vector x))"
          "javascript:lambda:(n) => new Array(n)"
-prim__newArr : Bits32 -> AnyPtr
+prim__emptyArray : Bits32 -> PrimIO AnyPtr
 
-%foreign "scheme:(lambda (v x) (vector-ref v x))"
-         "javascript:lambda:(v,x) => v[x]"
-%extern prim__arrGet : AnyPtr -> Bits32 -> AnyPtr
-
-%foreign "scheme:(lambda (v x w) (vector-set! v x w))"
-         "javascript:lambda:(v,x,w,t) => {v[x] = w; return t}"
-%extern prim__arrSet : AnyPtr -> Bits32 -> AnyPtr -> PrimIO ()
+%extern prim__newArray : forall a . Bits32 -> a -> PrimIO AnyPtr
+%extern prim__arrayGet : forall a . AnyPtr -> Bits32 -> PrimIO a
+%extern prim__arraySet : forall a . AnyPtr -> Bits32 -> a -> PrimIO ()
 
 --------------------------------------------------------------------------------
 --          Immutable Arrays
@@ -40,9 +34,11 @@ record IArray (n : Nat) (a : Type) where
   arr : AnyPtr
 
 ||| Safely access a value in an array at the given position.
-export
+export %inline
 at : IArray n a -> Fin n -> a
-at (IA ad) m = believe_me (prim__arrGet ad (cast $ finToNat m))
+at (IA ad) m =
+  let MkIORes v _ := prim__arrayGet ad (cast $ finToNat m) %MkWorld
+   in v
 
 ||| We can wrap a prefix of an array in O(1) simply by giving it
 ||| a new size index.
@@ -66,20 +62,31 @@ data MArray : (n : Nat) -> (a : Type) -> Type where
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
+-- ||| Reads the current value at a mutable reference tagged with `tag`.
+-- export %inline
+-- read1 : (r : Ref1 a) -> (0 p : Res r rs) => F1 rs a
+-- read1 (R1 m) = ffi (prim__readIORef m)
+--
+-- ||| Updates the mutable reference tagged with `tag`.
+-- export %inline
+-- write1 : (r : Ref1 a) -> (0 p : Res r rs) => (val : a) -> F1' rs
+-- write1 (R1 m) val = ffi (prim__writeIORef m val)
 
 ||| Fills a new mutable bound to linear computation `s`.
 export %inline
 newMArray : (n : Nat) -> a -> (1 t : T1 rs) -> A1 rs (MArray n a)
-newMArray n v t = A (MA (prim__fillArr (cast n) (believe_me v))) (unsafeBind t)
+newMArray n v t =
+  let m # t := ffi (prim__newArray (cast n) v) t in A (MA m) (unsafeBind t)
 
 export %inline
 unsafeNewMArray : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MArray n a)
-unsafeNewMArray n t = A (MA (prim__newArr (cast n))) (unsafeBind t)
+unsafeNewMArray n t =
+  let m # t := ffi (prim__emptyArray (cast n)) t in A (MA m) (unsafeBind t)
 
 ||| Safely write a value to a mutable array.
 export %inline
 set : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> a -> F1' rs
-set (MA arr) ix v = ffi (prim__arrSet arr (cast $ finToNat ix) (believe_me v))
+set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) v)
 
 ||| Safely read a value from a mutable array.
 |||
@@ -88,10 +95,10 @@ set (MA arr) ix v = ffi (prim__arrSet arr (cast $ finToNat ix) (believe_me v))
 ||| linear context.
 export %inline
 get : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> F1 rs a
-get (MA arr) ix t = believe_me (prim__arrGet arr (cast $ finToNat ix)) # t
+get (MA arr) ix = ffi (prim__arrayGet arr (cast $ finToNat ix))
 
 ||| Safely modify a value in a mutable array.
-export
+export %inline
 modify : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> (a -> a) -> F1' rs
 modify r ix f t = let v # t1 := get r ix t in set r ix (f v) t1
 
@@ -129,10 +136,10 @@ create n v f = run1 $ \t => let A r t2 := newMArray n v t in f r t2
 export
 alloc : (n : Nat) -> a -> (fun : WithMArray n a b) -> b
 alloc n v f =
-  create n v $ \r,t =>
-    let v # t := f r t
-        _ # t := release r t
-     in v # t
+  create n v $ \r => T1.do
+    v <- f r
+    release r
+    pure v
 
 ||| Like `create` but the initially created array will not hold any
 ||| sensible data.
@@ -182,9 +189,9 @@ freezeLTE :
   -> {auto 0 p : Res r rs}
   -> (0 m : Nat)
   -> C1 rs (Drop rs p) (IArray m a)
-freezeLTE (MA arr) _ t =
-  let _ # t := unsafeRelease p t
-   in IA arr # t
+freezeLTE (MA arr) _ = T1.do
+  unsafeRelease p
+  pure (IA arr)
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||

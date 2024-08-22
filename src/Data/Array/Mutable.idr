@@ -7,6 +7,8 @@ import public Data.Array.Index
 import Data.List
 import Data.Vect
 
+import Syntax.T1
+
 %default total
 
 --------------------------------------------------------------------------------
@@ -87,10 +89,10 @@ writeList :
   -> (ys : List a)
   -> {auto p : Suffix ys xs}
   -> F1' rs
-writeList r []        t = () # t
-writeList r (y :: ys) t =
-  let _ # t := setAtSuffix r p y t
-   in writeList {xs} r ys t
+writeList r []        = pure ()
+writeList r (y :: ys) = T1.do
+  setAtSuffix r p y
+  writeList {xs} r ys
 
 ||| Writes the data from a list to a mutable array.
 |||
@@ -103,10 +105,10 @@ writeListWith :
   -> (f : a -> b)
   -> {auto p : Suffix ys xs}
   -> F1' rs
-writeListWith r []        f t = () # t
-writeListWith r (y :: ys) f t =
-  let _ # t := setAtSuffix r p (f y) t
-   in writeListWith {xs} r ys f t
+writeListWith r []        f = pure ()
+writeListWith r (y :: ys) f = T1.do
+  setAtSuffix r p (f y)
+  writeListWith {xs} r ys f
 
 parameters {0 rs : Resources}
            (r : MArray n a)
@@ -115,79 +117,79 @@ parameters {0 rs : Resources}
   ||| Writes the data from a vector to a mutable array.
   export
   writeVect : Vect k a -> Ix k n => F1' rs
-  writeVect           []        t = () # t
-  writeVect {k = S m} (y :: ys) t =
-    let _ # t := setIx r m y t
-     in writeVect ys t
+  writeVect           []        = pure ()
+  writeVect {k = S m} (y :: ys) = T1.do
+    setIx r m y
+    writeVect ys
 
   ||| Writes the data from a vector to a mutable array in reverse order.
   export
   writeVectRev : (m : Nat) -> Vect k a -> (0 _ : LTE m n) => F1' rs
-  writeVectRev (S l) (y :: ys) t =
-    let _ # t := setNat r l y t
-     in writeVectRev l ys t
-  writeVectRev _     _         t = () # t
+  writeVectRev (S l) (y :: ys) = T1.do
+    setNat r l y
+    writeVectRev l ys
+  writeVectRev _     _         = pure ()
 
   ||| Overwrite the values in a mutable array from the
   ||| given index downward with the result of the given function.
   export
   genFrom : (m : Nat) -> (0 _ : LTE m n) => (Fin n -> a) -> F1' rs
-  genFrom 0     f t = () # t
-  genFrom (S k) f t =
-    let _ # t := setNat r k (f $ natToFinLT k) t
-     in genFrom k f t
+  genFrom 0     f = pure ()
+  genFrom (S k) f = T1.do
+    setNat r k (f $ natToFinLT k)
+    genFrom k f
 
   ||| Overwrite the values in a mutable array from the
   ||| given index upward with the results of applying the given
   ||| function repeatedly.
   export
   iterateFrom : (m : Nat) -> (ix : Ix m n) => (a -> a) -> a -> F1' rs
-  iterateFrom 0     f v t = () # t
-  iterateFrom (S k) f v t =
-    let _ # t := setIx r k v t
-     in iterateFrom k f (f v) t
+  iterateFrom 0     f v = pure ()
+  iterateFrom (S k) f v = T1.do
+    setIx r k v
+    iterateFrom k f (f v)
 
 export
 allocList : (xs : List a) -> FromMArray (length xs) a b -> b
 allocList xs g =
-  unsafeCreate (length xs) $ \r,t =>
-    let _ # t := writeList {xs} r xs t
-     in g r t
+  unsafeCreate (length xs) $ \r => T1.do
+    writeList {xs} r xs
+    g r
 
 export
 allocListWith : (xs : List a) -> (a -> b) -> FromMArray (length xs) b c -> c
 allocListWith xs f g =
-  unsafeCreate (length xs) $ \r,t =>
-    let _ # t := writeListWith {xs} r xs f t
-     in g r t
+  unsafeCreate (length xs) $ \r => T1.do
+    writeListWith {xs} r xs f
+    g r
 
 export
 allocVect : {n : _} -> Vect n a -> FromMArray n a b -> b
 allocVect xs g =
-  unsafeCreate n $ \r,t =>
-    let _ # t := writeVect r xs t
-     in g r t
+  unsafeCreate n $ \r => T1.do
+    writeVect r xs
+    g r
 
 export
 allocVectRev : {n : _} -> Vect n a -> FromMArray n a b -> b
 allocVectRev xs g =
-  unsafeCreate n $ \r,t =>
-    let _ # t := writeVectRev r n xs t
-     in g r t
+  unsafeCreate n $ \r => T1.do
+    writeVectRev r n xs
+    g r
 
 export
 allocGen : (n : Nat) -> (Fin n -> a) -> FromMArray n a b -> b
 allocGen n f g =
-  unsafeCreate n $ \r,t =>
-    let _ # t := genFrom r n f t
-     in g r t
+  unsafeCreate n $ \r => T1.do
+    genFrom r n f
+    g r
 
 export
 allocIter : (n : Nat) -> (a -> a) -> a -> FromMArray n a b -> b
 allocIter n f v g =
-  unsafeCreate n $ \r,t =>
-    let _ # t := iterateFrom r n f v t
-     in g r t
+  unsafeCreate n $ \r => T1.do
+    iterateFrom r n f v
+    g r
 
 --------------------------------------------------------------------------------
 -- Linear Utilities
@@ -204,8 +206,10 @@ parameters {0 rs : Resources}
   foldrLin f = go k
     where
       go : (n : Nat) -> (0 lt : LTE n k) => b -> F1 rs b
-      go 0     v m = v # m
-      go (S k) v m = let el # m2 := getNat r k m in go k (f el v) m2
+      go 0     v = pure v
+      go (S k) v = T1.do
+        el <- getNat r k
+        go k (f el v)
 
   ||| Store the values in a linear array in a `Vect` of the same size.
   export
