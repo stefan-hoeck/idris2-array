@@ -25,8 +25,8 @@ prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> PrimIO ()
 
 export
 %foreign "scheme:(lambda (n) (make-bytevector n 0))"
-         "javascript:lambda:s=>new Uint8Array(s)"
-prim__newBuf : Bits32 -> Buffer
+         "javascript:lambda:(s,w)=>new Uint8Array(s)"
+prim__newBuf : Bits32 -> PrimIO Buffer
 
 export
 %foreign "scheme:blodwen-buffer-getstring"
@@ -112,7 +112,9 @@ data MBuffer : (n : Nat) -> Type where
 ||| Fills a new mutable bound to linear computation `s`.
 export %inline
 newMBuffer : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MBuffer n)
-newMBuffer n t = A (MB (prim__newBuf (cast n))) (unsafeBind t)
+newMBuffer n t =
+  let MkIORes b _ := prim__newBuf (cast n) %MkWorld
+   in A (MB b) (unsafeBind t)
 
 ||| Safely write a value to a mutable byte vector.
 export %inline
@@ -246,13 +248,12 @@ readIBuffer :
   -> Nat
   -> File
   -> io (Either FileError (n ** IBuffer n))
-readIBuffer max f =
-  let buf  := prim__newBuf (cast max)
-   in do
-    Right r <- readBufferData f buf 0 (cast max) | Left x => pure (Left x)
-    if r >= 0
-       then pure (Right (cast r ** IB buf))
-       else pure (Left FileReadError)
+readIBuffer max f = do
+  buf <- primIO (prim__newBuf (cast max))
+  Right r <- readBufferData f buf 0 (cast max) | Left x => pure (Left x)
+  if r >= 0
+     then pure (Right (cast r ** IB buf))
+     else pure (Left FileReadError)
 
 ||| Write up to `len` bytes from a buffer to a file, starting
 ||| at the given offset.
