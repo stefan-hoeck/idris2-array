@@ -13,26 +13,32 @@ import System.File
 --          Raw Primitives
 --------------------------------------------------------------------------------
 
+export
 %foreign "scheme:(lambda (b o) (bytevector-u8-ref b o))"
          "javascript:lambda:(buf,offset)=>buf[offset]"
 prim__getByte : Buffer -> (offset : Bits32) -> Bits8
 
+export
 %foreign "scheme:(lambda (b o v) (bytevector-u8-set! b o v))"
          "javascript:lambda:(buf,offset,value,t)=>{buf[offset] = value; return t}"
 prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> PrimIO ()
 
+export
 %foreign "scheme:(lambda (n) (make-bytevector n 0))"
          "javascript:lambda:s=>new Uint8Array(s)"
 prim__newBuf : Bits32 -> Buffer
 
+export
 %foreign "scheme:blodwen-buffer-getstring"
          "javascript:lambda:(buf,offset,len)=> new TextDecoder().decode(buf.subarray(offset, offset+len))"
 prim__getString : Buffer -> (offset,len : Bits32) -> String
 
+export
 %foreign "scheme:(lambda (v) (string->utf8 v))"
          "javascript:lambda:(v)=> new TextEncoder().encode(v)"
 prim__fromString : (val : String) -> Buffer
 
+export
 %foreign "scheme:(lambda (b1 o1 len b2 o2) (bytevector-copy! b1 o1 b2 o2 len))"
          "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
 prim__copy : (src : Buffer) -> (srcOffset, len : Bits32) ->
