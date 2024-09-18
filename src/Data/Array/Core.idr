@@ -56,21 +56,25 @@ take _ (IA arr) = IA arr
 
 ||| A mutable array.
 export
-data MArray : (n : Nat) -> (a : Type) -> Type where
-  MA : (arr : AnyPtr) -> MArray n a
+data MArray' : (t : RTag) -> (n : Nat) -> (a : Type) -> Type where
+  MA : (arr : AnyPtr) -> MArray' t n a
+
+||| Convenience alias for `MArray' RPure`
+public export
+0 MArray : Nat -> Type -> Type
+MArray = MArray' RPure
+
+||| Convenience alias for `MArray' RIO`
+public export
+0 IOArray : Nat -> Type -> Type
+IOArray = MArray' RIO
+
+public export
+InIO (MArray' RIO n a) where
 
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
--- ||| Reads the current value at a mutable reference tagged with `tag`.
--- export %inline
--- read1 : (r : Ref1 a) -> (0 p : Res r rs) => F1 rs a
--- read1 (R1 m) = ffi (prim__readIORef m)
---
--- ||| Updates the mutable reference tagged with `tag`.
--- export %inline
--- write1 : (r : Ref1 a) -> (0 p : Res r rs) => (val : a) -> F1' rs
--- write1 (R1 m) val = ffi (prim__writeIORef m val)
 
 ||| Fills a new mutable bound to linear computation `s`.
 export %inline
@@ -78,14 +82,40 @@ newMArray : (n : Nat) -> a -> (1 t : T1 rs) -> A1 rs (MArray n a)
 newMArray n v t =
   let m # t := ffi (prim__newArray (cast n) v) t in A (MA m) (unsafeBind t)
 
+||| Fills a new mutable array in `T1 [Wrold]`
+export %inline
+arrayIO : (n : Nat) -> a -> F1 [World] (IOArray n a)
+arrayIO n v t = let m # t := ffi (prim__newArray (cast n) v) t in MA m # t
+
+||| Fills a new mutable array in `IO`
+export %inline
+newIOArray : HasIO io => (n : Nat) -> a -> io (IOArray n a)
+newIOArray n v =
+  primIO $ \w =>
+    let MkIORes m w := prim__newArray (cast n) v w
+     in MkIORes (MA m) w
+
 export %inline
 unsafeNewMArray : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MArray n a)
 unsafeNewMArray n t =
   let m # t := ffi (prim__emptyArray (cast n)) t in A (MA m) (unsafeBind t)
 
+||| Allocates a new, empty, mutable array in `T1 [Wrold]`
+export %inline
+unsafeArrayIO : (n : Nat) -> F1 [World] (IOArray n a)
+unsafeArrayIO n t = let m # t := ffi (prim__emptyArray (cast n)) t in MA m # t
+
+||| Allocates a new, empty, mutable array in `IO`
+export %inline
+unsafeNewIOArray : HasIO io => (n : Nat) -> io (IOArray n a)
+unsafeNewIOArray n =
+  primIO $ \w =>
+    let MkIORes m w := prim__emptyArray (cast n) w
+     in MkIORes (MA m) w
+
 ||| Safely write a value to a mutable array.
 export %inline
-set : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> a -> F1' rs
+set : (r : MArray' t n a) -> (0 p : Res r rs) => Fin n -> a -> F1' rs
 set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) v)
 
 ||| Safely read a value from a mutable array.
@@ -94,15 +124,24 @@ set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) v)
 ||| with a new linear token of quantity one to be further used in the
 ||| linear context.
 export %inline
-get : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> F1 rs a
+get : (r : MArray' t n a) -> (0 p : Res r rs) => Fin n -> F1 rs a
 get (MA arr) ix = ffi (prim__arrayGet arr (cast $ finToNat ix))
 
 ||| Safely modify a value in a mutable array.
 export %inline
-modify : (r : MArray n a) -> (0 p : Res r rs) => Fin n -> (a -> a) -> F1' rs
+modify : (r : MArray' t n a) -> (0 p : Res r rs) => Fin n -> (a -> a) -> F1' rs
 modify r ix f t = let v # t1 := get r ix t in set r ix (f v) t1
 
-||| Release a mutable array.
+||| Wraps a mutable array in a shorter one.
+export %inline
+mtake :
+     (r   : IOArray n a)
+  -> (0 m : Nat)
+  -> {auto 0 lte : LTE m n}
+  -> F1 [World] (IOArray m a)
+mtake (MA arr) _ t = MA arr # t
+
+||| Release a mutable linear array.
 |||
 ||| Afterwards, it can no longer be use with the given linear token.
 export %inline
