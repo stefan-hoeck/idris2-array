@@ -16,7 +16,7 @@ import Data.Vect
 ||| used for filling said array.
 export %inline
 setAtSuffix :
-     (r : MBuffer (length ys))
+     (r : MBuffer' t (length ys))
   -> {auto 0 p : Res r rs}
   -> Suffix (x::xs) ys
   -> Bits8
@@ -24,7 +24,7 @@ setAtSuffix :
 setAtSuffix r v = set r (suffixToFin v)
 
 parameters {0 rs : Resources}
-           (r : MBuffer n)
+           (r : MBuffer' t n)
            {auto 0 p : Res r rs}
 
   ||| Set a value at index `n - m` in a mutable byte array.
@@ -84,7 +84,7 @@ parameters {0 rs : Resources}
 ||| Writes the data from a list to a mutable byte vector.
 export
 writeList :
-     (r : MBuffer (length xs))
+     (r : MBuffer' t (length xs))
   -> {auto 0 _ : Res r rs}
   -> (ys : List Bits8)
   -> {auto p : Suffix ys xs}
@@ -95,7 +95,7 @@ writeList r (y :: ys) t =
    in writeList {xs} r ys t
 
 parameters {0 rs : Resources}
-           (r : MBuffer n)
+           (r : MBuffer' t n)
            {auto 0 p : Res r rs}
 
   ||| Writes the data from a vector to a mutable array.

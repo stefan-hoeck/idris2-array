@@ -19,7 +19,7 @@ import Syntax.T1
 ||| used for filling said array.
 export %inline
 setAtSuffix :
-     (r : MArray (length ys) a)
+     (r : MArray' t (length ys) a)
   -> {auto 0 p : Res r rs}
   -> Suffix (x::xs) ys
   -> a
@@ -27,7 +27,7 @@ setAtSuffix :
 setAtSuffix r v = set r (suffixToFin v)
 
 parameters {0 rs : Resources}
-           (r : MArray n a)
+           (r : MArray' t n a)
            {auto 0 p : Res r rs}
 
   ||| Set a value at index `n - m` in a mutable array.
@@ -84,7 +84,7 @@ parameters {0 rs : Resources}
 ||| This uses the `Suffix` proof for safely indexing into the array.
 export
 writeList :
-     (r  : MArray (length xs) a)
+     (r  : MArray' t (length xs) a)
   -> {auto 0 _ : Res r rs}
   -> (ys : List a)
   -> {auto p : Suffix ys xs}
@@ -99,7 +99,7 @@ writeList r (y :: ys) = T1.do
 ||| This uses the `Suffix` proof for safely indexing into the array.
 export
 writeListWith :
-     (r  : MArray (length xs) b)
+     (r  : MArray' t (length xs) b)
   -> {auto 0 _ : Res r rs}
   -> (ys : List a)
   -> (f : a -> b)
@@ -111,7 +111,7 @@ writeListWith r (y :: ys) f = T1.do
   writeListWith {xs} r ys f
 
 parameters {0 rs : Resources}
-           (r : MArray n a)
+           (r : MArray' t n a)
            {auto 0 p : Res r rs}
 
   ||| Writes the data from a vector to a mutable array.
@@ -197,7 +197,7 @@ allocIter n f v g =
 
 parameters {0 rs : Resources}
            {k    : Nat}
-           (r    : MArray k a)
+           (r    : MArray' t k a)
            {auto 0 p : Res r rs}
 
   ||| Accumulate the values stored in a mutable, linear array.

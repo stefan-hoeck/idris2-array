@@ -102,34 +102,60 @@ unsafeMakeBuffer = IB
 
 ||| A mutable byte array.
 export
-data MBuffer : (n : Nat) -> Type where
-  MB : (buf : Buffer) -> MBuffer n
+data MBuffer' : (t : RTag) -> (n : Nat) -> Type where
+  MB : (buf : Buffer) -> MBuffer' t n
+
+||| Convenience alias for `MBuffer' RPure`
+public export
+0 MBuffer : Nat -> Type
+MBuffer = MBuffer' RPure
+
+||| Convenience alias for `MBuffer' RIO`
+public export
+0 IOBuffer : Nat -> Type
+IOBuffer = MBuffer' RIO
+
+public export
+InIO (MBuffer' RIO n) where
 
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
 
-||| Fills a new mutable bound to linear computation `s`.
+||| Creates a new mutable bound to linear computation `s`.
 export %inline
 newMBuffer : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MBuffer n)
 newMBuffer n t =
   let MkIORes b _ := prim__newBuf (cast n) %MkWorld
    in A (MB b) (unsafeBind t)
 
+||| Creates a new mutable buffer in `T1 [Wrold]`
+export %inline
+bufferIO : (n : Nat) -> a -> F1 [World] (IOBuffer n)
+bufferIO n v t = let m # t := ffi (prim__newBuf (cast n)) t in MB m # t
+
+||| Creates a new mutable buffer in `IO`.
+export %inline
+newIOBuffer : HasIO io => (n : Nat) -> io (IOBuffer n)
+newIOBuffer n =
+  primIO $ \w =>
+    let MkIORes m w := prim__newBuf (cast n) w
+     in MkIORes (MB m) w
+
 ||| Safely write a value to a mutable byte vector.
 export %inline
-set : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> Bits8 -> F1' rs
+set : (r : MBuffer' t n) -> (0 p : Res r rs) => Fin n -> Bits8 -> F1' rs
 set (MB buf) ix v = ffi (prim__setByte buf (cast $ finToNat ix) v)
 
 ||| Safely read a value from a mutable byte array.
 export %inline
-get : (r : MBuffer n) -> (0 p : Res r rs) => Fin n -> F1 rs Bits8
+get : (r : MBuffer' t n) -> (0 p : Res r rs) => Fin n -> F1 rs Bits8
 get (MB buf) ix t = prim__getByte buf (cast $ finToNat ix) # t
 
 ||| Safely modify a value in a mutable byte array.
 export
 modify :
-     (r : MBuffer n)
+     (r : MBuffer' t n)
   -> {auto 0 p : Res r rs}
   -> Fin n
   -> (Bits8 -> Bits8)
