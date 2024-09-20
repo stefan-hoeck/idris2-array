@@ -169,6 +169,16 @@ export %inline
 release : (0 r : MBuffer n) -> (0 p : Res r rs) => C1' rs (Drop rs p)
 release _ = unsafeRelease p
 
+||| Extracts a string from a (possibly partially) filled byte array.
+export %inline
+bufString :
+     (r : MBuffer' t n)
+  -> {auto 0 p : Res r rs}
+  -> (m : Nat)
+  -> {auto 0 lte : LTE m n}
+  -> F1 rs String
+bufString (MB buf) m t = prim__getString buf 0 (cast m) # t
+
 --------------------------------------------------------------------------------
 -- Allocating Byte Vectors
 --------------------------------------------------------------------------------
