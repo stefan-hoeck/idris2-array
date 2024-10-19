@@ -3,6 +3,16 @@ module Data.Array
 import public Data.Array.Core
 import public Data.Array.Index
 import public Data.Array.Indexed
+import public Data.Vect
+import public Syntax.T1
+
+%hide Builtin.DPair.Res
+%hide Data.List.Quantifiers.Nil
+%hide Data.List.Quantifiers.All.Nil
+%hide Data.Linear.Nil
+%hide Data.Linear.Token.Nil
+-- %hide Data.Vect.Nil
+%hide Prelude.Nil
 
 %default total
 
@@ -93,11 +103,40 @@ force (A s arr) = A s $ force arr
 --          Subarrays
 --------------------------------------------------------------------------------
 
+0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
+curLTE s lte = transitive lte $ ixLTE s
+
 export %inline
 take : Nat -> Array a -> Array a
 take k (A size arr) with (k <= size) proof eq
   _ | True  = A k $ take k arr @{lteOpReflectsLTE _ _ eq}
   _ | False = A size arr
+
+export %inline
+drop : Nat -> Array a -> Array a
+drop k (A size arr) =
+  A (minus size k)
+    (unsafeCreate (minus size k) (go (minus size k) k $ toVectWithIndex arr))
+  where
+    go : (m : Nat)
+      -> (k : Nat)
+      -> Vect n (Fin n, a)
+      -> FromMArray n a (IArray m a)
+    go _ _ Nil           r = freeze r
+    go m k ((i,x) :: xs) r =
+      case tryNatToFin k of
+        Nothing =>
+          go m k xs r
+        Just k' =>
+          case compare i k' of
+            LT =>
+              go m k xs r
+            EQ => T1.do
+              set r i x
+              go m k xs r
+            GT => T1.do
+              set r i x
+              go m k xs r
 
 export %inline
 filter : (a -> Bool) -> Array a -> Array a
