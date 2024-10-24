@@ -136,10 +136,10 @@ drop k (A size arr) =
        -> {auto 0 v   : LTE i m}
        -> {auto 0 v'  : LTE 1 m}
        -> FromMArray m a (Array a)
-    go i m Nil       r     = T1.do
+    go i     m Nil       r = T1.do
       res <- freeze r
       pure $ A m res
-    go 0 m (x :: xs) r =
+    go 0     m (x :: xs) r =
       case tryNatToFin 0 of
         Nothing =>
           go 1 m xs r
