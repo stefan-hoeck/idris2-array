@@ -133,13 +133,13 @@ drop k (A size arr) =
     go :  (i : Nat)
        -> (m : Nat)
        -> List a
-       -> {auto 0 v  : LTE i m}
-       -> {auto 0 v' : LTE 1 m}
+       -> {auto 0 v   : LTE i m}
+       -> {auto 0 v'  : LTE 1 m}
        -> FromMArray m a (Array a)
     go i m Nil       r     = T1.do
       res <- freeze r
       pure $ A m res
-    go 0     m (x :: xs) r =
+    go 0 m (x :: xs) r =
       case tryNatToFin 0 of
         Nothing =>
           go 1 m xs r
@@ -149,10 +149,10 @@ drop k (A size arr) =
     go (S i) m (x :: xs) r =
       case tryNatToFin i of
         Nothing =>
-          go i m xs r
+          go (S i) m xs r
         Just i' => T1.do
           set r i' x
-          go i m xs r
+          go (S i) m xs r
 
 export %inline
 filter : (a -> Bool) -> Array a -> Array a
