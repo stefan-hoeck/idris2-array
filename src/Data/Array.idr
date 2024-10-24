@@ -3,16 +3,18 @@ module Data.Array
 import public Data.Array.Core
 import public Data.Array.Index
 import public Data.Array.Indexed
+import public Data.Array.Mutable
+import public Data.Fin
 import public Data.Vect
 import public Syntax.T1
 
-%hide Builtin.DPair.Res
-%hide Data.List.Quantifiers.Nil
-%hide Data.List.Quantifiers.All.Nil
-%hide Data.Linear.Nil
-%hide Data.Linear.Token.Nil
+-- %hide Builtin.DPair.Res
+-- %hide Data.List.Quantifiers.Nil
+-- %hide Data.List.Quantifiers.All.Nil
+-- %hide Data.Linear.Nil
+-- %hide Data.Linear.Token.Nil
 -- %hide Data.Vect.Nil
-%hide Prelude.Nil
+-- %hide Prelude.Nil
 
 %default total
 
@@ -103,8 +105,11 @@ force (A s arr) = A s $ force arr
 --          Subarrays
 --------------------------------------------------------------------------------
 
-0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
-curLTE s lte = transitive lte $ ixLTE s
+--0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
+--curLTE s lte = transitive lte $ ixLTE s
+
+--0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
+--curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
 export %inline
 take : Nat -> Array a -> Array a
@@ -115,28 +120,39 @@ take k (A size arr) with (k <= size) proof eq
 export %inline
 drop : Nat -> Array a -> Array a
 drop k (A size arr) =
-  A (minus size k)
-    (unsafeCreate (minus size k) (go (minus size k) k $ toVectWithIndex arr))
+  let m = minus size k
+      i = 0
+      l = map Builtin.snd                       $
+           Prelude.toList                       $ 
+             map (\(i, x) => (minus i k, x))    $
+               map (\(i, x) => (finToNat i, x)) $
+                 drop k                         $
+                   toVectWithIndex arr
+    in unsafeCreate m (go i m l)
   where
-    go : (m : Nat)
-      -> (k : Nat)
-      -> Vect n (Fin n, a)
-      -> FromMArray n a (IArray m a)
-    go _ _ Nil           r = freeze r
-    go m k ((i,x) :: xs) r =
-      case tryNatToFin k of
+    go :  (i : Nat)
+       -> (m : Nat)
+       -> List a
+       -> {auto 0 v  : LTE i m}
+       -> {auto 0 v' : LTE 1 m}
+       -> FromMArray m a (Array a)
+    go i m Nil       r     = T1.do
+      res <- freeze r
+      pure $ A m res
+    go 0     m (x :: xs) r =
+      case tryNatToFin 0 of
         Nothing =>
-          go m k xs r
-        Just k' =>
-          case compare i k' of
-            LT =>
-              go m k xs r
-            EQ => T1.do
-              set r i x
-              go m k xs r
-            GT => T1.do
-              set r i x
-              go m k xs r
+          go 1 m xs r
+        Just i' => T1.do
+          set r i' x
+          go 1 m xs r
+    go (S i) m (x :: xs) r =
+      case tryNatToFin i of
+        Nothing =>
+          go i m xs r
+        Just i' => T1.do
+          set r i' x
+          go i m xs r
 
 export %inline
 filter : (a -> Bool) -> Array a -> Array a
