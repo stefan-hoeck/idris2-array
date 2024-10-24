@@ -142,10 +142,10 @@ drop k (A size arr) =
     go 0     m (x :: xs) r =
       case tryNatToFin 0 of
         Nothing =>
-          go 1 m xs r
+          go (S 0) m xs r
         Just i' => T1.do
           set r i' x
-          go 1 m xs r
+          go (S 0) m xs r
     go (S i) m (x :: xs) r =
       case tryNatToFin i of
         Nothing =>
