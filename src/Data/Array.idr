@@ -8,14 +8,6 @@ import public Data.Fin
 import public Data.Vect
 import public Syntax.T1
 
--- %hide Builtin.DPair.Res
--- %hide Data.List.Quantifiers.Nil
--- %hide Data.List.Quantifiers.All.Nil
--- %hide Data.Linear.Nil
--- %hide Data.Linear.Token.Nil
--- %hide Data.Vect.Nil
--- %hide Prelude.Nil
-
 %default total
 
 --------------------------------------------------------------------------------
@@ -105,56 +97,12 @@ force (A s arr) = A s $ force arr
 --          Subarrays
 --------------------------------------------------------------------------------
 
---0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
---curLTE s lte = transitive lte $ ixLTE s
-
---0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
---curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
-
 export %inline
 take : Nat -> Array a -> Array a
 take k (A size arr) with (k <= size) proof eq
   _ | True  = A k $ take k arr @{lteOpReflectsLTE _ _ eq}
   _ | False = A size arr
 
-{-
-export %inline
-drop : Nat -> Array a -> Array a
-drop k (A size arr) =
-  let m = minus size k
-      i = 0
-      l = map Builtin.snd                        $
-            Prelude.toList                       $
-              map (\(i, x) => (minus i k, x))    $
-                map (\(i, x) => (finToNat i, x)) $
-                  drop {m=m} k                   $
-                    toVectWithIndex arr
-    in unsafeCreate m (go i m l)
-  where
-      go :  (i : Nat)
-         -> (m : Nat)
-         -> List a
-         -> {auto 0 _ : LTE i m}
-         -> {auto 0 _ : LTE 1 m}
-         -> FromMArray m a (Array a)
-      go i     m Nil       r = T1.do
-        res <- freeze r
-        pure $ A m res
-      go 0     m (x :: xs) r =
-        case tryNatToFin 0 of
-          Nothing =>
-            go (S 0) m xs r
-          Just i' => T1.do
-            set r i' x
-            go (S 0) m xs r
-      go (S i) m (x :: xs) r =
-        case tryNatToFin i of
-          Nothing =>
-            go (S i) m xs r
-          Just i' => T1.do
-            set r i' x
-            go (S i) m xs r
--}
 partial export %inline
 drop : Nat -> Array a -> Array a
 drop k (A size arr) =
@@ -162,20 +110,21 @@ drop k (A size arr) =
                            (go k 0 size (A size arr))
     in take (minus size k) drop'
   where
-      go :  (k : Nat)
+      go :  (l : Nat)
          -> (z : Nat)
          -> (n : Nat)
          -> Array a
          -> FromMArray n a (Array a)
-      go k z n (A size arr) r with (tryNatToFin k) | (tryNatToFin z) | (k <= n)
-         _ | Just k' | Just z' | True  = T1.do
-                                           set r z' (at arr k')
-                                           go (S k) (S z) n (A size arr) r
-         _ | _       | Nothing | True  = go (S k) (S z) n (A size arr) r
-         _ | Nothing | _       | True  = go (S k) (S z) n (A size arr) r
-         _ | _       | _       | False = T1.do
-                                           res <- freeze r
-                                           pure $ A n res
+      go l z n (A size arr) r with (tryNatToFin {k=size} l) 
+         go l z n (A size arr) r | l' with (tryNatToFin {k=n} z) | (l <= n)
+          go l z n (A size arr) r | Just k' | Just z' | True  = T1.do
+                                                                  set r z' (at arr k')
+                                                                  go (S k) (S z) n (A size arr) r
+          go l z n (A size arr) r | _       | Nothing | True  = go (S k) (S z) n (A size arr) r
+          go l z n (A size arr) r | Nothing | _       | True  = go (S k) (S z) n (A size arr) r
+          go l z n (A size arr) r | _       | _       | False = T1.do
+                                                                  res <- freeze r
+                                                                  pure $ A n res
 
 export %inline
 filter : (a -> Bool) -> Array a -> Array a
