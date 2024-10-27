@@ -116,12 +116,12 @@ drop k (A size arr) =
          -> Array a
          -> FromMArray n a (Array a)
       go l z n (A size arr) r with (tryNatToFin {k=size} l) 
-         go l z n (A size arr) r | l' with (tryNatToFin {k=n} z) | (z <= n)
-          go l z n (A size arr) r | Just k' | Just z' | True  = T1.do
-                                                                  set r z' (at arr k')
-                                                                  go (S k) (S z) n (A size arr) r
-          go l z n (A size arr) r | _       | Nothing | True  = go (S k) (S z) n (A size arr) r
-          go l z n (A size arr) r | Nothing | _       | True  = go (S k) (S z) n (A size arr) r
+        go l z n (A size arr) r | l' with (tryNatToFin {k=n} z) | (z <= n)
+          go l z n (A size arr) r | Just l'' | Just z' | True  = T1.do
+                                                                   set r z' (at arr l'')
+                                                                   go (S l) (S z) n (A size arr) r
+          go l z n (A size arr) r | _       | Nothing | True  = go (S l) (S z) n (A size arr) r
+          go l z n (A size arr) r | Nothing | _       | True  = go (S l) (S z) n (A size arr) r
           go l z n (A size arr) r | _       | _       | False = T1.do
                                                                   res <- freeze r
                                                                   pure $ A n res
