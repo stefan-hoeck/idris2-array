@@ -3,9 +3,6 @@ module Data.Array
 import public Data.Array.Core
 import public Data.Array.Index
 import public Data.Array.Indexed
-import public Data.Array.Mutable
-import public Data.Fin
-import public Data.Vect
 import public Syntax.T1
 
 %default total
