@@ -103,10 +103,10 @@ take k (A size arr) with (k <= size) proof eq
 partial export %inline
 drop : Nat -> Array a -> Array a
 drop k (A size arr) =
-  case k <= size of
-    False =>
-      empty
+  case k >= size of
     True  =>
+      empty
+    False =>
       let drop' = unsafeCreate size
                                (go k 0 size (A size arr))
         in take (minus size k) drop'
