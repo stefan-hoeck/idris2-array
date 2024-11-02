@@ -44,7 +44,7 @@ at (IA ad) m =
 ||| a new size index.
 |||
 ||| Note: If you only need a small portion of a potentially large
-|||       array the resto of which you no longer need, consider to
+|||       array the rest of which you no longer need, consider to
 |||       release the large array from memory by invoking `force`.
 export
 take : (0 m : Nat) -> IArray n a -> {auto 0 lte : LTE m n} -> IArray m a
@@ -53,7 +53,7 @@ take _ (IA arr) = IA arr
 ||| We can drop n elements from the start of an array. O(n)
 |||
 ||| Note: If you only need a small portion of a potentially large
-|||       array the resto of which you no longer need, consider to
+|||       array the rest of which you no longer need, consider to
 |||       release the large array from memory by invoking `force`.
 export
 drop : (0 m : Nat) -> IArray n a -> {auto 0 lte : LTE m n} -> IArray m a
@@ -91,7 +91,7 @@ newMArray : (n : Nat) -> a -> (1 t : T1 rs) -> A1 rs (MArray n a)
 newMArray n v t =
   let m # t := ffi (prim__newArray (cast n) v) t in A (MA m) (unsafeBind t)
 
-||| Fills a new mutable array in `T1 [Wrold]`
+||| Fills a new mutable array in `T1 [World]`
 export %inline
 arrayIO : (n : Nat) -> a -> F1 [World] (IOArray n a)
 arrayIO n v t = let m # t := ffi (prim__newArray (cast n) v) t in MA m # t
