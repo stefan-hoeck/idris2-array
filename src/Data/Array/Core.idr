@@ -2,6 +2,7 @@
 ||| mutable (linear) arrays.
 module Data.Array.Core
 
+import Data.Array.Index
 import Data.Linear
 import Data.Linear.Token
 import Data.Fin
@@ -49,15 +50,6 @@ at (IA ad) m =
 export
 take : (0 m : Nat) -> IArray n a -> {auto 0 lte : LTE m n} -> IArray m a
 take _ (IA arr) = IA arr
-
-||| We can drop n elements from the start of an array. O(n)
-|||
-||| Note: If you only need a small portion of a potentially large
-|||       array the rest of which you no longer need, consider to
-|||       release the large array from memory by invoking `force`.
-export
-drop : (0 m : Nat) -> IArray n a -> {auto 0 lte : LTE m n} -> IArray (minus n m) a
-drop _ (IA arr) = IA arr
 
 --------------------------------------------------------------------------------
 --          Mutable Arrays

@@ -100,32 +100,9 @@ take k (A size arr) with (k <= size) proof eq
   _ | True  = A k $ take k arr @{lteOpReflectsLTE _ _ eq}
   _ | False = A size arr
 
-partial export %inline
+export %inline
 drop : Nat -> Array a -> Array a
-drop k (A size arr) =
-  case k >= size of
-    True  =>
-      empty
-    False =>
-      let drop' = unsafeCreate size
-                               (go k 0 size (A size arr))
-        in take (minus size k) drop'
-  where
-      go :  (l : Nat)
-         -> (z : Nat)
-         -> (n : Nat)
-         -> Array a
-         -> FromMArray n a (Array a)
-      go l z n (A size arr) r with (tryNatToFin {k=size} l) 
-        go l z n (A size arr) r | l' with (tryNatToFin {k=n} z) | (z <= n)
-          go l z n (A size arr) r | Just l'' | Just z' | True  = T1.do
-                                                                   set r z' (at arr l'')
-                                                                   go (S l) (S z) n (A size arr) r
-          go l z n (A size arr) r | _       | Nothing | True  = go (S l) (S z) n (A size arr) r
-          go l z n (A size arr) r | Nothing | _       | True  = go (S l) (S z) n (A size arr) r
-          go l z n (A size arr) r | _       | _       | False = T1.do
-                                                                  res <- freeze r
-                                                                  pure $ A n res
+drop n (A size arr) = A (size `minus` n) (drop n arr)
 
 export %inline
 filter : (a -> Bool) -> Array a -> Array a
