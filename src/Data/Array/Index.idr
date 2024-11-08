@@ -252,6 +252,20 @@ export
 minusFinLT (S k) FZ = LTESucc (minusLTE k 0)
 minusFinLT (S k) (FS x) = LTESucc (minusLTE k _)
 
+export
+0 minusLT : (x,m,n : Nat) -> LT x (n `minus` m) -> LT (x+m) n
+minusLT x _     0     y = absurd y
+minusLT x 0     (S k) y = rewrite plusZeroRightNeutral x in y
+minusLT x (S k) (S j) y =
+  let p1 := minusLT x k j y
+   in LTESucc (rewrite sym (plusSuccRightSucc x k) in p1)
+
+export
+inc : {m : _} -> Fin (n `minus` m) -> Fin n
+inc x =
+  let 0 p1 := finToNatLT x
+   in natToFinLT (finToNat x + m) @{minusLT _ _ _ p1}
+
 --------------------------------------------------------------------------------
 --          Relations
 --------------------------------------------------------------------------------

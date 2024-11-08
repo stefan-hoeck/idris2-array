@@ -100,6 +100,10 @@ take k (A size arr) with (k <= size) proof eq
   _ | False = A size arr
 
 export %inline
+drop : Nat -> Array a -> Array a
+drop n (A size arr) = A (size `minus` n) (drop n arr)
+
+export %inline
 filter : (a -> Bool) -> Array a -> Array a
 filter f (A size arr) = filter f arr
 

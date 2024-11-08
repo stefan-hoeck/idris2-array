@@ -300,6 +300,11 @@ curLTE s lte = transitive lte $ ixLTE s
 0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
+||| We can drop n elements from an array. O(n)
+export
+drop : {n : _} -> (m : Nat) -> IArray n a -> IArray (n `minus` m) a
+drop m arr = generate (n `minus` m) (\f => at arr (inc f))
+
 ||| Filter the values in a graph together with their corresponding
 ||| indices according to the given predicate.
 export
