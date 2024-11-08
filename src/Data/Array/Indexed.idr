@@ -301,10 +301,6 @@ curLTE s lte = transitive lte $ ixLTE s
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
 ||| We can drop n elements from an array. O(n)
-|||
-||| Note: If you only need a small portion of a potentially large
-|||       array the rest of which you no longer need, consider to
-|||       release the large array from memory by invoking `force`.
 export
 drop : {n : _} -> (m : Nat) -> IArray n a -> IArray (n `minus` m) a
 drop m arr = generate (n `minus` m) (\f => at arr (inc f))
