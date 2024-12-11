@@ -425,3 +425,12 @@ listConcat as = snocConcat ([<] <>< as)
 export
 append : {m,n : Nat} -> IArray m a -> IArray n a -> IArray (m + n) a
 append xs ys = snocConcat [<A m xs, A n ys]
+
+--------------------------------------------------------------------------------
+--          Growing
+--------------------------------------------------------------------------------
+
+||| Grow an array by the given number of elements, providing a default fill value.
+export
+grow : {m,n : Nat} -> IArray m a -> (n : Nat) -> a -> IArray (m + n) a
+grow arr n v = append arr (fill n v)

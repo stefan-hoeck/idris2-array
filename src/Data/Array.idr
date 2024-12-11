@@ -110,3 +110,12 @@ filter f (A size arr) = filter f arr
 export %inline
 mapMaybe : (a -> Maybe b) -> Array a -> Array b
 mapMaybe f (A size arr) = mapMaybe f arr
+
+--------------------------------------------------------------------------------
+--          Growing
+--------------------------------------------------------------------------------
+
+||| Grow an array by the given number of elements, providing a default fill value.
+export
+grow : Array a -> (n : Nat) -> a -> Array a
+grow arr n v = A (arr.size `plus` n) (append arr.arr (fill n v))
