@@ -115,7 +115,7 @@ mapMaybe f (A size arr) = mapMaybe f arr
 --          Growing
 --------------------------------------------------------------------------------
 
-||| Grow an array by the given number of elements, providing a default fill value.
+||| Grow an array by the given number of elements with a default fill value.
 export
 grow : Array a -> (n : Nat) -> a -> Array a
 grow arr n v = A (arr.size `plus` n) (append arr.arr (fill n v))

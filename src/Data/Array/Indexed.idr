@@ -430,7 +430,7 @@ append xs ys = snocConcat [<A m xs, A n ys]
 --          Growing
 --------------------------------------------------------------------------------
 
-||| Grow an array by the given number of elements, providing a default fill value.
+||| Grow an array by the given number of elements with a default fill value.
 export
 grow : {m,n : Nat} -> IArray m a -> (n : Nat) -> a -> IArray (m + n) a
 grow arr n v = append arr (fill n v)
