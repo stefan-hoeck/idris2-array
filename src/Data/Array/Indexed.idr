@@ -430,7 +430,21 @@ append xs ys = snocConcat [<A m xs, A n ys]
 --          Growing
 --------------------------------------------------------------------------------
 
-||| Grow an array by the given number of elements with a default fill value.
+||| Grow an array by the given number of elements.
 export
-grow : {m,n : Nat} -> IArray m a -> (n : Nat) -> a -> IArray (m + n) a
-grow arr n v = append arr (fill n v)
+grow : {m,n : Nat} -> IArray m a -> (n : Nat) -> IArray (m + n) a
+grow arr n = unsafeCreate (m `plus` n) (go 0 (m `plus` n) (toList arr))
+  where
+    go :  (cur,n' : Nat)
+       -> List a
+       -> FromMArray n' a (IArray n' a)
+    go cur n' []        r = T1.do
+      res <- freeze r
+      pure res
+    go cur n' (x :: xs) r =
+      case tryNatToFin cur of
+        Nothing   =>
+          go (S cur) n' xs r
+        Just cur' => T1.do
+          set r cur' x
+          go (S cur) n' xs r

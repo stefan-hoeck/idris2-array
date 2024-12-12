@@ -3,6 +3,7 @@ module Data.Array
 import public Data.Array.Core
 import public Data.Array.Index
 import public Data.Array.Indexed
+import Syntax.T1
 
 %default total
 
@@ -115,7 +116,21 @@ mapMaybe f (A size arr) = mapMaybe f arr
 --          Growing
 --------------------------------------------------------------------------------
 
-||| Grow an array by the given number of elements with a default fill value.
+||| Grow an array by the given number of elements.
 export
-grow : Array a -> (n : Nat) -> a -> Array a
-grow arr n v = A (arr.size `plus` n) (append arr.arr (fill n v))
+grow : Array a -> (n : Nat) -> Array a
+grow arr n = unsafeCreate (arr.size `plus` n) (go 0 (arr.size `plus` n) (toList arr))
+  where
+    go :  (cur,n' : Nat)
+       -> List a
+       -> FromMArray n' a (Array a)
+    go cur n' []        r = T1.do
+      res <- freeze r
+      pure $ A n' res
+    go cur n' (x :: xs) r =
+      case tryNatToFin cur of
+        Nothing   =>
+          go (S cur) n' xs r
+        Just cur' => T1.do
+          set r cur' x
+          go (S cur) n' xs r
