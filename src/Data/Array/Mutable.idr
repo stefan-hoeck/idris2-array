@@ -209,7 +209,7 @@ parameters {0 rs : Resources}
   writeMArray (S k) tgt t =
     let v # t := getNat r k t
         _ # t := setNat tgt k {lt = ltAddLeft lte} v t
-      in writeMArray k tgt t
+     in writeMArray k tgt t
 
 
   ||| Allocates a new mutable array and adds the elements from `r`
@@ -219,7 +219,7 @@ parameters {0 rs : Resources}
   mgrow m deflt t =
     let A tgt t := newMArray (m+n) deflt t
         _ #   t := writeMArray n tgt t
-      in A tgt t
+     in A tgt t
 
 ||| Utility for growing and replacing a single mutable array.
 export
@@ -233,7 +233,7 @@ mgrow1 :
 mgrow1 r m dflt t =
   let A tgt t := mgrow r m dflt t
       _ #   t := release r t
-    in A tgt t
+   in A tgt t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
