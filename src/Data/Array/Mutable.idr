@@ -214,7 +214,7 @@ parameters {0 rs : Resources}
 
   ||| Allocates a new mutable array and adds the elements from `r`
   ||| at its beginning.
-  export 
+  export
   mgrow : (m : Nat) -> (deflt : a) -> (1 t : T1 rs) -> A1 rs (MArray (m+n) a)
   mgrow m deflt t =
     let A tgt t := newMArray (m+n) deflt t
