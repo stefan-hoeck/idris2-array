@@ -200,22 +200,23 @@ parameters {0 rs : Resources}
            (r : MArray n a)
            {auto 0 p : Res r rs}
 
-  writeMArray :
-       (k : Nat)
-    -> {auto 0 lte : LTE k n}
-    -> (tgt : MArray (m+n) a)
-    -> F1' (tgt::rs)
+  writeMArray :  (k : Nat)
+              -> {auto 0 lte : LTE k n}
+              -> (tgt : MArray (m+n) a)
+              -> F1' (tgt::rs)
   writeMArray 0     tgt t = () # t
   writeMArray (S k) tgt t =
     let v # t := getNat r k t
         _ # t := setNat tgt k {lt = ltAddLeft lte} v t
      in writeMArray k tgt t
 
-
   ||| Allocates a new mutable array and adds the elements from `r`
   ||| at its beginning.
   export
-  mgrow : (m : Nat) -> (deflt : a) -> (1 t : T1 rs) -> A1 rs (MArray (m+n) a)
+  mgrow :  (m : Nat)
+        -> (deflt : a)
+        -> (1 t : T1 rs)
+        -> A1 rs (MArray (m+n) a)
   mgrow m deflt t =
     let A tgt t := newMArray (m+n) deflt t
         _ #   t := writeMArray n tgt t
