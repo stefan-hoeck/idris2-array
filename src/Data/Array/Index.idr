@@ -266,6 +266,11 @@ inc x =
   let 0 p1 := finToNatLT x
    in natToFinLT (finToNat x + m) @{minusLT _ _ _ p1}
 
+export
+0 ltAddLeft : LT k n -> LT k (m+n)
+ltAddLeft {m = 0}   lt = lt
+ltAddLeft {m = S x} lt = lteSuccRight $ ltAddLeft lt
+
 --------------------------------------------------------------------------------
 --          Relations
 --------------------------------------------------------------------------------
