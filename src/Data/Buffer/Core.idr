@@ -127,7 +127,7 @@ export %inline
 newMBuffer : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MBuffer n)
 newMBuffer n t =
   let MkIORes b _ := prim__newBuf (cast n) %MkWorld
-   in A (MB b) (unsafeBind t)
+   in MB b # unsafeBind t
 
 ||| Creates a new mutable buffer in `T1 [Wrold]`
 export %inline
@@ -197,7 +197,7 @@ FromMBuffer n a = (r : MBuffer n) -> C1 [r] [] a
 |||       might be more convenient.
 export
 create : (n : Nat) -> (fun : FromMBuffer n a) -> a
-create n f = run1 $ \t => let A r t := newMBuffer n t in f r t
+create n f = run1 $ \t => let r # t := newMBuffer n t in f r t
 
 ||| Allocate, use, and release a mutable byte array in a linear computation.
 |||
