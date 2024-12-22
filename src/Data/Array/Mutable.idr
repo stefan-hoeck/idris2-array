@@ -192,7 +192,52 @@ allocIter n f v g =
     g r
 
 --------------------------------------------------------------------------------
--- Linear Utilities
+--          Growing Arrays
+--------------------------------------------------------------------------------
+
+parameters {0 rs : Resources}
+           {n : Nat}
+           (r : MArray n a)
+           {auto 0 p : Res r rs}
+
+  writeMArray :  (k : Nat)
+              -> {auto 0 lte : LTE k n}
+              -> (tgt : MArray (m+n) a)
+              -> F1' (tgt::rs)
+  writeMArray 0     tgt t = () # t
+  writeMArray (S k) tgt t =
+    let v # t := getNat r k t
+        _ # t := setNat tgt k {lt = ltAddLeft lte} v t
+     in writeMArray k tgt t
+
+  ||| Allocates a new mutable array and adds the elements from `r`
+  ||| at its beginning.
+  export
+  mgrow :  (m : Nat)
+        -> (deflt : a)
+        -> (1 t : T1 rs)
+        -> A1 rs (MArray (m+n) a)
+  mgrow m deflt t =
+    let tgt # t := newMArray (m+n) deflt t
+        _   # t := writeMArray n tgt t
+     in tgt # t
+
+||| Utility for growing and replacing a single mutable array.
+export
+mgrow1 :
+     {n : Nat}
+  -> (r : MArray n a)
+  -> (m : Nat)
+  -> (deflt : a)
+  -> (1 t : T1 [r])
+  -> A1 [] (MArray (m+n) a)
+mgrow1 r m dflt t =
+  let tgt # t := mgrow r m dflt t
+      _   # t := release r t
+   in tgt # t
+
+--------------------------------------------------------------------------------
+--          Linear Utilities
 --------------------------------------------------------------------------------
 
 parameters {0 rs : Resources}
