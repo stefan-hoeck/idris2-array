@@ -218,9 +218,9 @@ parameters {0 rs : Resources}
         -> (1 t : T1 rs)
         -> A1 rs (MArray (m+n) a)
   mgrow m deflt t =
-    let A tgt t := newMArray (m+n) deflt t
-        _ #   t := writeMArray n tgt t
-     in A tgt t
+    let tgt # t := newMArray (m+n) deflt t
+        _   # t := writeMArray n tgt t
+     in tgt # t
 
 ||| Utility for growing and replacing a single mutable array.
 export
@@ -232,9 +232,9 @@ mgrow1 :
   -> (1 t : T1 [r])
   -> A1 [] (MArray (m+n) a)
 mgrow1 r m dflt t =
-  let A tgt t := mgrow r m dflt t
-      _ #   t := release r t
-   in A tgt t
+  let tgt # t := mgrow r m dflt t
+      _   # t := release r t
+   in tgt # t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
