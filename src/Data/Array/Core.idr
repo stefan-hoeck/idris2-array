@@ -81,7 +81,7 @@ InIO (MArray' RIO n a) where
 export %inline
 newMArray : (n : Nat) -> a -> (1 t : T1 rs) -> A1 rs (MArray n a)
 newMArray n v t =
-  let m # t := ffi (prim__newArray (cast n) v) t in A (MA m) (unsafeBind t)
+  let m # t := ffi (prim__newArray (cast n) v) t in MA m # unsafeBind t
 
 ||| Fills a new mutable array in `T1 [World]`
 export %inline
@@ -99,7 +99,7 @@ newIOArray n v =
 export %inline
 unsafeNewMArray : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MArray n a)
 unsafeNewMArray n t =
-  let m # t := ffi (prim__emptyArray (cast n)) t in A (MA m) (unsafeBind t)
+  let m # t := ffi (prim__emptyArray (cast n)) t in MA m # unsafeBind t
 
 ||| Allocates a new, empty, mutable array in `T1 [Wrold]`
 export %inline
@@ -167,7 +167,7 @@ FromMArray n a b = (r : MArray n a) -> C1 [r] [] b
 |||       might be more convenient.
 export
 create : (n : Nat) -> a -> (fun : FromMArray n a b) -> b
-create n v f = run1 $ \t => let A r t2 := newMArray n v t in f r t2
+create n v f = run1 $ \t => let r # t2 := newMArray n v t in f r t2
 
 ||| Allocate, use, and release a mutable array in a linear computation.
 |||
@@ -192,7 +192,7 @@ alloc n v f =
 ||| See for instance the implementation of `filter` or `mapMaybe`.
 export
 unsafeCreate : (n : Nat) -> (fun : FromMArray n a b) -> b
-unsafeCreate n f = run1 $ \t => let A r t2 := unsafeNewMArray n t in f r t2
+unsafeCreate n f = run1 $ \t => let r # t2 := unsafeNewMArray n t in f r t2
 
 ||| Like `alloc` but the initially created array will not hold any
 ||| sensible data.
