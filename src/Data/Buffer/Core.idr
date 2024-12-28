@@ -118,6 +118,11 @@ IOBuffer = MBuffer' RIO
 public export
 InIO (MBuffer' RIO n) where
 
+||| Wraps a `Buffer` in an `IOBuffer`. Use at your own risk.
+export %inline
+unsafeWrapBuffer : Buffer -> IOBuffer n
+unsafeWrapBuffer = MB
+
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
