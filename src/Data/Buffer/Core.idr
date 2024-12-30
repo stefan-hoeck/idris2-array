@@ -120,8 +120,13 @@ InIO (MBuffer' RIO n) where
 
 ||| Wraps a `Buffer` in an `IOBuffer`. Use at your own risk.
 export %inline
-unsafeWrapBuffer : Buffer -> IOBuffer n
-unsafeWrapBuffer = MB
+unsafeMBuffer : Buffer -> MBuffer' t n
+unsafeMBuffer = MB
+
+||| Extracts the `Buffer` from an `MBuffer`. Use at your own risk.
+export %inline
+unsafeFromMBuffer : MBuffer' t n -> Buffer
+unsafeFromMBuffer (MB buf) = buf
 
 --------------------------------------------------------------------------------
 -- Utilities
