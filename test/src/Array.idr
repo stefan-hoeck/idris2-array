@@ -2,7 +2,9 @@ module Array
 
 import Control.Monad.Identity
 import Data.Array
-import Data.SOP
+import Data.Array.Mutable
+import Data.List
+import Data.List.Quantifiers
 import Data.SnocList
 import Data.Vect
 import Hedgehog
@@ -22,17 +24,17 @@ prop_eq_refl = property $ do
 
 prop_eq_sym : Property
 prop_eq_sym = property $ do
-  [vs,ws] <- forAll $ np [arrBits,arrBits]
+  [vs,ws] <- forAll $ hlist [arrBits,arrBits]
   (vs == ws) === (ws == vs)
 
 prop_eq_trans : Property
 prop_eq_trans = property $ do
-  [us,vs,ws] <- forAll $ np [arrBits,arrBits,arrBits]
+  [us,vs,ws] <- forAll $ hlist [arrBits,arrBits,arrBits]
   when (us == vs && vs == ws) (us === ws)
 
 prop_eq_eq : Property
 prop_eq_eq = property $ do
-  [vs,ws] <- forAll $ np [arrBits,arrBits]
+  [vs,ws] <- forAll $ hlist [arrBits,arrBits]
   when (vs == ws) $ do
     assert (vs <= ws)
     assert (vs >= ws)
@@ -42,13 +44,13 @@ prop_eq_eq = property $ do
 
 prop_eq_neq : Property
 prop_eq_neq = property $ do
-  [vs,ws] <- forAll $ np [arrBits,arrBits]
+  [vs,ws] <- forAll $ hlist [arrBits,arrBits]
   when (vs /= ws) $ do
     assert (vs < ws || ws < vs)
 
 prop_lt : Property
 prop_lt = property $ do
-  [vs,ws] <- forAll $ np [arrBits,arrBits]
+  [vs,ws] <- forAll $ hlist [arrBits,arrBits]
   ((vs < ws) === (ws > vs))
   when (vs < ws) $ do
     assert (vs /= ws)
@@ -57,7 +59,7 @@ prop_lt = property $ do
 
 prop_lte : Property
 prop_lte = property $ do
-  [vs,ws] <- forAll $ np [arrBits,arrBits]
+  [vs,ws] <- forAll $ hlist [arrBits,arrBits]
   ((vs <= ws) === (ws >= vs))
 
 prop_map_id : Property
@@ -88,7 +90,7 @@ prop_foldl = property $ do
 prop_foldr : Property
 prop_foldr = property $ do
   vs <- forAll arrBits
-  foldr (::) [] vs === foldr (::) [] (toList vs)
+  foldr (::) Prelude.Nil vs === foldr (::) [] (toList vs)
 
 prop_null : Property
 prop_null = property $ do
@@ -138,12 +140,12 @@ prop_traverse_id = property $ do
 
 prop_append : Property
 prop_append = property $ do
-  [x,y] <- forAll $ np [arrBits,arrBits]
+  [x,y] <- forAll $ hlist [arrBits,arrBits]
   toList (x <+> y) === (toList x ++ toList y)
 
 prop_semigroup_assoc : Property
 prop_semigroup_assoc = property $ do
-  [x,y,z] <- forAll $ np [arrBits,arrBits,arrBits]
+  [x,y,z] <- forAll $ hlist [arrBits,arrBits,arrBits]
   (x <+> (y <+> z)) === ((x <+> y) <+> z)
 
 prop_monoid_left_neutral : Property
@@ -155,6 +157,39 @@ prop_monoid_right_neutral : Property
 prop_monoid_right_neutral = property $ do
   x <- forAll arrBits
   (x <+> empty) === x
+
+casWriteGet :
+     (r : MArray' t 3 a)
+  -> (pre,new : a)
+  -> F1 [r] (Bool,a)
+casWriteGet r pre new t =
+  let b # t := casset r 2 pre new t
+      v # t := Core.get r 2 t
+   in (b,v) # t
+
+prop_casset : Property
+prop_casset =
+  property $ do
+    [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+    (True,y) === alloc 3 x (\r => casWriteGet r x y)
+
+prop_casset_diff : Property
+prop_casset_diff =
+  property $ do
+    [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+    (False,x) === alloc 3 x (\r => casWriteGet r (x+1) y)
+
+prop_casupdate : Property
+prop_casupdate =
+  property $ do
+    [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+    x === alloc 3 x (\r => casupdate r 2 (\v => (v+y,v)))
+
+prop_casmodify : Property
+prop_casmodify =
+  property $ do
+    [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+    (x+y) === alloc 3 x (\r,t => let _ # t := casmodify r 2 (+y) t in get r 2 t)
 
 export
 props : Group
@@ -185,5 +220,9 @@ props = MkGroup "Array"
   , ("prop_semigroup_assoc", prop_semigroup_assoc)
   , ("prop_monoid_left_neutral", prop_monoid_left_neutral)
   , ("prop_monoid_right_neutral", prop_monoid_right_neutral)
+  , ("prop_casset", prop_casset)
+  , ("prop_casset_diff", prop_casset_diff)
+  , ("prop_casupdate", prop_casupdate)
+  , ("prop_casmodify", prop_casmodify)
   ]
 

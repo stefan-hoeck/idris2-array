@@ -24,6 +24,10 @@ prim__emptyArray : Bits32 -> PrimIO AnyPtr
 %extern prim__arrayGet : forall a . AnyPtr -> Bits32 -> PrimIO a
 %extern prim__arraySet : forall a . AnyPtr -> Bits32 -> a -> PrimIO ()
 
+%foreign "scheme:(lambda (a x i v w) (if (vector-cas! x i v w) 1 0))"
+         "javascript:lambda:(a,x,i,v,w) => {if (x[i] === v) {x[i] = w; return 1;} else {return 0;}}"
+prim__casSet : AnyPtr -> Bits32 -> (prev,val : a) -> Bits8
+
 --------------------------------------------------------------------------------
 --          Immutable Arrays
 --------------------------------------------------------------------------------
@@ -132,6 +136,66 @@ get (MA arr) ix = ffi (prim__arrayGet arr (cast $ finToNat ix))
 export %inline
 modify : (r : MArray' t n a) -> (0 p : Res r rs) => Fin n -> (a -> a) -> F1' rs
 modify r ix f t = let v # t1 := get r ix t in set r ix (f v) t1
+
+||| Atomically writes `val` at the given position of the mutable array
+||| if its current value is equal to `pre`.
+|||
+||| This is supported and has been tested on the Chez and Racket backends.
+||| It trivially works on the JavaScript backends, which are single-threaded
+||| anyway.
+export %inline
+casset :
+     (r : MArray' t n a)
+  -> {auto 0 p : Res r rs}
+  -> Fin n
+  -> (pre,val : a)
+  -> F1 rs Bool
+casset (MA arr) x pre val t =
+  case prim__casSet arr (cast $ finToNat x) pre val of
+    0 => False # t
+    _ => True # t
+
+||| Atomic modification of an array position using a CAS-loop internally.
+|||
+||| This is supported and has been tested on the Chez and Racket backends.
+||| It trivially works on the JavaScript backends, which are single-threaded
+||| anyway.
+export
+casupdate :
+     (r : MArray' t n a)
+  -> Fin n
+  -> (a -> (a,b))
+  -> {auto 0 p : Res r rs}
+  -> F1 rs b
+casupdate r x f t = assert_total (loop t)
+  where
+    covering loop : F1 rs b
+    loop t =
+      let cur # t  := get r x t
+          (new,v)  := f cur
+          True # t := casset r x cur new t | _ # t => loop t
+       in v # t
+
+||| Atomic modification of an array position reference using a CAS-loop
+||| internally.
+|||
+||| This is supported and has been tested on the Chez and Racket backends.
+||| It trivially works on the JavaScript backends, which are single-threaded
+||| anyway.
+export
+casmodify :
+     (r : MArray' t n a)
+  -> Fin n
+  -> (a -> a)
+  -> {auto 0 p : Res r rs}
+  -> F1' rs
+casmodify r x f t = assert_total (loop t)
+  where
+    covering loop : F1' rs
+    loop t =
+      let cur  # t := get r x t
+          True # t := casset r x cur (f cur) t | _ # t => loop t
+       in () # t
 
 ||| Wraps a mutable array in a shorter one.
 export %inline
