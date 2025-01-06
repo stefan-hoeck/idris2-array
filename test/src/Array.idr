@@ -156,6 +156,40 @@ prop_monoid_right_neutral = property $ do
   x <- forAll arrBits
   (x <+> empty) === x
 
+casWriteGet :
+     (r : MArray' t 3 a)
+  -> (pre,new : a)
+  -> {auto 0 p : Res r rs}
+  -> F1 rs (Bool,a)
+casWriteGet r pre new t =
+  let b # t := casset r 2 pre new t
+      v # t := get r 2 t
+   in (b,v) # t
+--
+-- prop_caswrite1 : Property
+-- prop_caswrite1 =
+--   property $ do
+--     [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+--     (True,y) === withRef1 x (\r => casWriteGet r x y)
+--
+-- prop_caswrite_diff : Property
+-- prop_caswrite_diff =
+--   property $ do
+--     [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+--     (False,x) === withRef1 x (\r => casWriteGet r (x+1) y)
+--
+-- prop_casupdate1 : Property
+-- prop_casupdate1 =
+--   property $ do
+--     [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+--     x === withRef1 x (\r => casupdate1 r (\v => (v+y,v)))
+--
+-- prop_casmod1 : Property
+-- prop_casmod1 =
+--   property $ do
+--     [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+--     (x+y) === withRef1 x (\r,t => let _ # t := casmod1 r (+y) t in read1 r t)
+
 export
 props : Group
 props = MkGroup "Array"
