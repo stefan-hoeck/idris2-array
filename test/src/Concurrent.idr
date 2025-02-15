@@ -14,10 +14,10 @@ ITER = 1_000_000
 
 data Prog = Unsafe | CAS | Mut
 
-inc : (r : IOArray 1 Nat) -> F1' [World]
+inc : (r : MArray s 1 Nat) -> F1' s
 inc r = modify r 0 S
 
-casinc : (r : IOArray 1 Nat) -> F1' [World]
+casinc : (r : MArray s 1 Nat) -> F1' s
 casinc r = casmodify r 0 S
 
 mutinc : Mutex -> IOArray 1 Nat -> Nat -> IO ()
