@@ -37,10 +37,10 @@ writeVct r = T1.do
   writeVect r ["1","2","3","4"]
   [| MkPair (get r 0) (get r 1) |]
 
-writeVctUr : FromMArray 4 String (IArray 4 String)
+writeVctUr : WithMArray 4 String (IArray 4 String)
 writeVctUr r t =
   let _ # t := writeVect r ["1","2","3","4"] t
-   in freeze r t
+   in unsafeFreeze r t
 
 export
 props : Group
@@ -51,5 +51,5 @@ props =
     , ("setgetSyntax",  test1 (alloc 10 "foo" setgetSyntax) ("bar","foo"))
     , ("writeLst",  test1 (alloc 4 "foo" writeLst) ("1","2"))
     , ("writeVct",  test1 (alloc 4 "foo" writeVct) ("1","2"))
-    , ("writeVctUr",  test1 (create 4 "foo" writeVctUr) (array ["1","2","3","4"]))
+    , ("writeVctUr",  test1 (alloc 4 "foo" writeVctUr) (array ["1","2","3","4"]))
     ]

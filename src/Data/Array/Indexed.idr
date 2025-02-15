@@ -38,17 +38,17 @@ atNat arr x = at arr (natToFinLT x)
 ||| The empty array.
 export %inline
 empty : IArray 0 a
-empty = unsafeCreate 0 $ \r => freeze r
+empty = unsafeAlloc 0 unsafeFreeze
 
 ||| Copy the values in a list to an array of the same length.
 export %inline
 arrayL : (ls : List a) -> IArray (length ls) a
-arrayL xs = allocList xs $ \r => freeze r
+arrayL xs = allocList xs unsafeFreeze
 
 ||| Copy the values in a vector to an array of the same length.
 export %inline
 array : {n : _} -> Vect n a -> IArray n a
-array xs = allocVect xs $ \r => freeze r
+array xs = allocVect xs unsafeFreeze
 
 ||| Copy the values in a vector to an array of the same length
 ||| in reverse order.
@@ -57,24 +57,24 @@ array xs = allocVect xs $ \r => freeze r
 ||| from tail to head for instance when parsing some data.
 export %inline
 revArray : {n : _} -> Vect n a -> IArray n a
-revArray xs = allocVectRev xs $ \r => freeze r
+revArray xs = allocVectRev xs unsafeFreeze
 
 ||| Fill an immutable array of the given size with the given value
 export %inline
 fill : (n : Nat) -> a -> IArray n a
-fill n v = create n v $ \r => freeze r
+fill n v = alloc n v unsafeFreeze
 
 ||| Generate an immutable array of the given size using
 ||| the given iteration function.
 export %inline
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
-generate n f = allocGen n f $ \r => freeze r
+generate n f = allocGen n f unsafeFreeze
 
 ||| Generate an array of the given size by filling it with the
 ||| results of repeatedly applying `f` to the initial value.
 export %inline
 iterate : (n : Nat) -> (f : a -> a) -> a -> IArray n a
-iterate n f v = allocIter n f v $ \r => freeze r
+iterate n f v = allocIter n f v unsafeFreeze
 
 ||| Copy the content of an array to a new array.
 |||
@@ -89,10 +89,10 @@ force arr = generate n (at arr)
 ||| of pairs to replace specific positions.
 export
 fromPairs : (n : Nat) -> a -> List (Nat,a) -> IArray n a
-fromPairs n v ps = create n v (go ps)
+fromPairs n v ps = alloc n v (go ps)
   where
-    go : List (Nat,a) -> FromMArray n a (IArray n a)
-    go []            r = freeze r
+    go : List (Nat,a) -> WithMArray n a (IArray n a)
+    go []            r = unsafeFreeze r
     go ((x,v) :: xs) r =
       case tryNatToFin x of
         Just y  => T1.do set r y v; go xs r
@@ -313,16 +313,16 @@ filterWithKey :
   -> (Fin n -> a -> Bool)
   -> IArray n a
   -> Array a
-filterWithKey f arr = unsafeCreate n (go 0 n)
+filterWithKey f arr = unsafeAlloc n (go 0 n)
 
   where
     go :
          (cur,x : Nat)
       -> {auto v : Ix x n}
       -> {auto 0 prf : LTE cur $ ixToNat v}
-      -> FromMArray n a (Array a)
+      -> WithMArray n a (Array a)
     go cur 0 r = T1.do
-      res <- freezeLTE @{curLTE v prf} r cur
+      res <- unsafeFreezeLTE @{curLTE v prf} r cur
       pure $ A cur res
     go cur (S j) r =
       case f (ixToFin v) (ix arr j) of
@@ -344,16 +344,16 @@ mapMaybeWithKey :
   -> (Fin n -> a -> Maybe b)
   -> IArray n a
   -> Array b
-mapMaybeWithKey f arr = unsafeCreate n (go 0 n)
+mapMaybeWithKey f arr = unsafeAlloc n (go 0 n)
 
   where
     go :
          (cur,x : Nat)
       -> {auto v : Ix x n}
       -> {auto 0 prf : LTE cur $ ixToNat v}
-      -> FromMArray n b (Array b)
+      -> WithMArray n b (Array b)
     go cur 0 r = T1.do
-      res <- freezeLTE @{curLTE v prf} r cur
+      res <- unsafeFreezeLTE @{curLTE v prf} r cur
       pure $ A cur res
     go cur (S j) r =
       case f (ixToFin v) (ix arr j) of
@@ -394,12 +394,12 @@ sconc :
   -> (arrs        : SnocList (Array a))
   -> {auto 0 lte1 : LTE pos n}
   -> {auto 0 lte2 : LTE cur m}
-  -> FromMArray n a (IArray n a)
+  -> WithMArray n a (IArray n a)
 sconc pos   0     _   (sx :< A s x) r t = sconc pos s x   sx r t
 sconc (S j) (S k) x   sx            r t =
   let _ # t := setNat r j (atNat x k) t
    in sconc j k x sx r t
-sconc _     _     _   _             r t = freeze r t
+sconc _     _     _   _             r t = unsafeFreeze r t
 
 ||| Concatenate a SnocList of arrays.
 |||
@@ -411,7 +411,7 @@ snocConcat [<]                 = empty
 snocConcat (sa :< A 0 _)       =
   rewrite plusZeroRightNeutral (SnocSize sa) in snocConcat sa
 snocConcat (sa :< A (S k) arr) with (SnocSize sa + S k)
-  _ | n = create n (at arr 0) (sconc n (S k) arr sa)
+  _ | n = alloc n (at arr 0) (sconc n (S k) arr sa)
 
 ||| Concatenate a List of arrays.
 |||
