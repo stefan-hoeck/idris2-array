@@ -61,21 +61,13 @@ take _ (IA arr) = IA arr
 
 ||| A mutable array.
 export
-data MArray' : (t : RTag) -> (n : Nat) -> (a : Type) -> Type where
-  MA : (arr : AnyPtr) -> MArray' t n a
-
-||| Convenience alias for `MArray' RPure`
-public export
-0 MArray : Nat -> Type -> Type
-MArray = MArray' RPure
+data MArray : (s : Type) -> (n : Nat) -> (a : Type) -> Type where
+  MA : (arr : AnyPtr) -> MArray s n a
 
 ||| Convenience alias for `MArray' RIO`
 public export
 0 IOArray : Nat -> Type -> Type
-IOArray = MArray' RIO
-
-public export
-InIO (MArray' RIO n a) where
+IOArray = MArray World
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -83,44 +75,28 @@ InIO (MArray' RIO n a) where
 
 ||| Fills a new mutable bound to linear computation `s`.
 export %inline
-newMArray : (n : Nat) -> a -> (1 t : T1 rs) -> A1 rs (MArray n a)
+newMArray : (n : Nat) -> a -> F1 s (MArray s n a)
 newMArray n v t =
-  let m # t := ffi (prim__newArray (cast n) v) t in MA m # unsafeBind t
-
-||| Fills a new mutable array in `T1 [World]`
-export %inline
-arrayIO : (n : Nat) -> a -> F1 [World] (IOArray n a)
-arrayIO n v t = let m # t := ffi (prim__newArray (cast n) v) t in MA m # t
+  let m # t := ffi (prim__newArray (cast n) v) t in MA m # t
 
 ||| Fills a new mutable array in `IO`
 export %inline
 newIOArray : HasIO io => (n : Nat) -> a -> io (IOArray n a)
-newIOArray n v =
-  primIO $ \w =>
-    let MkIORes m w := prim__newArray (cast n) v w
-     in MkIORes (MA m) w
+newIOArray n v = runIO (newMArray n v)
 
 export %inline
-unsafeNewMArray : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MArray n a)
+unsafeNewMArray : (n : Nat) -> F1 s (MArray s n a)
 unsafeNewMArray n t =
-  let m # t := ffi (prim__emptyArray (cast n)) t in MA m # unsafeBind t
-
-||| Allocates a new, empty, mutable array in `T1 [Wrold]`
-export %inline
-unsafeArrayIO : (n : Nat) -> F1 [World] (IOArray n a)
-unsafeArrayIO n t = let m # t := ffi (prim__emptyArray (cast n)) t in MA m # t
+  let m # t := ffi (prim__emptyArray (cast n)) t in MA m # t
 
 ||| Allocates a new, empty, mutable array in `IO`
 export %inline
 unsafeNewIOArray : HasIO io => (n : Nat) -> io (IOArray n a)
-unsafeNewIOArray n =
-  primIO $ \w =>
-    let MkIORes m w := prim__emptyArray (cast n) w
-     in MkIORes (MA m) w
+unsafeNewIOArray n = runIO (unsafeNewMArray n)
 
 ||| Safely write a value to a mutable array.
 export %inline
-set : (r : MArray' t n a) -> (0 p : Res r rs) => Fin n -> a -> F1' rs
+set : (r : MArray s n a) -> Fin n -> a -> F1' s
 set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) v)
 
 ||| Safely read a value from a mutable array.
@@ -129,12 +105,12 @@ set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) v)
 ||| with a new linear token of quantity one to be further used in the
 ||| linear context.
 export %inline
-get : (r : MArray' t n a) -> (0 p : Res r rs) => Fin n -> F1 rs a
+get : (r : MArray s n a) -> Fin n -> F1 s a
 get (MA arr) ix = ffi (prim__arrayGet arr (cast $ finToNat ix))
 
 ||| Safely modify a value in a mutable array.
 export %inline
-modify : (r : MArray' t n a) -> (0 p : Res r rs) => Fin n -> (a -> a) -> F1' rs
+modify : (r : MArray s n a) -> Fin n -> (a -> a) -> F1' s
 modify r ix f t = let v # t1 := get r ix t in set r ix (f v) t1
 
 ||| Atomically writes `val` at the given position of the mutable array
@@ -144,12 +120,7 @@ modify r ix f t = let v # t1 := get r ix t in set r ix (f v) t1
 ||| It trivially works on the JavaScript backends, which are single-threaded
 ||| anyway.
 export %inline
-casset :
-     (r : MArray' t n a)
-  -> {auto 0 p : Res r rs}
-  -> Fin n
-  -> (pre,val : a)
-  -> F1 rs Bool
+casset : (r : MArray s n a) -> Fin n -> (pre,val : a) -> F1 s Bool
 casset (MA arr) x pre val t =
   case prim__casSet arr (cast $ finToNat x) pre val of
     0 => False # t
@@ -161,15 +132,10 @@ casset (MA arr) x pre val t =
 ||| It trivially works on the JavaScript backends, which are single-threaded
 ||| anyway.
 export
-casupdate :
-     (r : MArray' t n a)
-  -> Fin n
-  -> (a -> (a,b))
-  -> {auto 0 p : Res r rs}
-  -> F1 rs b
+casupdate : (r : MArray s n a) -> Fin n -> (a -> (a,b)) -> F1 s b
 casupdate r x f t = assert_total (loop t)
   where
-    covering loop : F1 rs b
+    covering loop : F1 s b
     loop t =
       let cur # t  := get r x t
           (new,v)  := f cur
@@ -183,15 +149,10 @@ casupdate r x f t = assert_total (loop t)
 ||| It trivially works on the JavaScript backends, which are single-threaded
 ||| anyway.
 export
-casmodify :
-     (r : MArray' t n a)
-  -> Fin n
-  -> (a -> a)
-  -> {auto 0 p : Res r rs}
-  -> F1' rs
+casmodify : (r : MArray s n a) -> Fin n -> (a -> a) -> F1' s
 casmodify r x f t = assert_total (loop t)
   where
-    covering loop : F1' rs
+    covering loop : F1' s
     loop t =
       let cur  # t := get r x t
           True # t := casset r x cur (f cur) t | _ # t => loop t
@@ -199,19 +160,8 @@ casmodify r x f t = assert_total (loop t)
 
 ||| Wraps a mutable array in a shorter one.
 export %inline
-mtake :
-     (r   : IOArray n a)
-  -> (0 m : Nat)
-  -> {auto 0 lte : LTE m n}
-  -> F1 [World] (IOArray m a)
+mtake : MArray s n a -> (0 m : Nat) -> (0 lte : LTE m n) => F1 s (MArray s m a)
 mtake (MA arr) _ t = MA arr # t
-
-||| Release a mutable linear array.
-|||
-||| Afterwards, it can no longer be use with the given linear token.
-export %inline
-release : (0 r : MArray n a) -> (0 p : Res r rs) => C1' rs (Drop rs p)
-release _ = unsafeRelease p
 
 --------------------------------------------------------------------------------
 -- Allocating Arrays
@@ -219,31 +169,12 @@ release _ = unsafeRelease p
 
 public export
 0 WithMArray : Nat -> (a,b : Type) -> Type
-WithMArray n a b = (r : MArray n a) -> F1 [r] b
+WithMArray n a b = forall s . (r : MArray s n a) -> F1 s b
 
-public export
-0 FromMArray : Nat -> (a,b : Type) -> Type
-FromMArray n a b = (r : MArray n a) -> C1 [r] [] b
-
-||| Allocate and potentially freeze a mutable array in a linear context.
-|||
-||| Note: In case you don't need to freeze the array in the end, using `alloc`
-|||       might be more convenient.
-export
-create : (n : Nat) -> a -> (fun : FromMArray n a b) -> b
-create n v f = run1 $ \t => let r # t2 := newMArray n v t in f r t2
-
-||| Allocate, use, and release a mutable array in a linear computation.
-|||
-||| Note: In case you want to freeze the array and return it in the
-|||       result, use `create`.
+||| Allocate and use a mutable array in a linear context.
 export
 alloc : (n : Nat) -> a -> (fun : WithMArray n a b) -> b
-alloc n v f =
-  create n v $ \r => T1.do
-    v <- f r
-    release r
-    pure v
+alloc n v f = run1 $ \t => let r # t2 := newMArray n v t in f r t2
 
 ||| Like `create` but the initially created array will not hold any
 ||| sensible data.
@@ -255,25 +186,8 @@ alloc n v f =
 |||
 ||| See for instance the implementation of `filter` or `mapMaybe`.
 export
-unsafeCreate : (n : Nat) -> (fun : FromMArray n a b) -> b
-unsafeCreate n f = run1 $ \t => let r # t2 := unsafeNewMArray n t in f r t2
-
-||| Like `alloc` but the initially created array will not hold any
-||| sensible data.
-|||
-||| Use with care: Client code is responsible to properly initialize
-||| the array with data. This is useful for creating arrays of unknown
-||| size, when it is not immediately clear whether it will hold any
-||| data at all.
-|||
-||| See for instance the implementation of `filter` or `mapMaybe`.
-export
 unsafeAlloc : (n : Nat) -> (fun : WithMArray n a b) -> b
-unsafeAlloc n f =
-  unsafeCreate n $ \r,t =>
-    let v # t := f r t
-        _ # t := release r t
-     in v # t
+unsafeAlloc n f = run1 $ \t => let r # t2 := unsafeNewMArray n t in f r t2
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
@@ -285,21 +199,24 @@ unsafeAlloc n f =
 ||| It is safe to only use a prefix of a properly constructed array,
 ||| therefore we are free to give the resulting array a smaller size.
 ||| Most of the time, we'd like to use the whole array, in which case
-||| we can just use `freeze`.
+||| we can just use `unsafeFreeze`.
+|||
+||| Note: For reasons of efficiency, this does not copy the mutable array,
+|||       and therefore, it must no longer be modified after calling
+|||       this function.
 export %inline
-freezeLTE :
+unsafeFreezeLTE :
      {auto 0 _ : LTE m n}
-  -> (r        : MArray n a)
-  -> {auto 0 p : Res r rs}
+  -> (r        : MArray s n a)
   -> (0 m : Nat)
-  -> C1 rs (Drop rs p) (IArray m a)
-freezeLTE (MA arr) _ = T1.do
-  unsafeRelease p
-  pure (IA arr)
+  -> F1 s (IArray m a)
+unsafeFreezeLTE (MA arr) _ t = IA arr # t
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
-||| See `freezeLTE` for some additional notes about how this works under the hood.
+||| Note: For reasons of efficiency, this does not copy the mutable array,
+|||       and therefore, it must no longer be modified after calling
+|||       this function.
 export %inline
-freeze : (r : MArray n a) -> (0 p : Res r rs) => C1 rs (Drop rs p) (IArray n a)
-freeze r = freezeLTE @{reflexive} r n
+unsafeFreeze : (r : MArray s n a) -> F1 s (IArray n a)
+unsafeFreeze r = unsafeFreezeLTE @{reflexive} r n

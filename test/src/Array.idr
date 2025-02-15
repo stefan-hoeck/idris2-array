@@ -159,9 +159,9 @@ prop_monoid_right_neutral = property $ do
   (x <+> empty) === x
 
 casWriteGet :
-     (r : MArray' t 3 a)
+     (r : MArray s 3 a)
   -> (pre,new : a)
-  -> F1 [r] (Bool,a)
+  -> F1 s (Bool,a)
 casWriteGet r pre new t =
   let b # t := casset r 2 pre new t
       v # t := Core.get r 2 t

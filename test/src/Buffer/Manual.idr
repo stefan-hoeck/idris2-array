@@ -38,10 +38,10 @@ writeVct r = T1.do
   writeVect r [1,2,3,4]
   [| MkPair (get r 0) (get r 1) |]
 
-writeVctUr : FromMBuffer 4 (IBuffer 4)
+writeVctUr : WithMBuffer 4 (IBuffer 4)
 writeVctUr r t =
   let _ # t := writeVect r [1,2,3,4] t
-   in freeze r t
+   in unsafeFreeze r t
 
 export
 props : Group
@@ -52,5 +52,5 @@ props =
     , ("setgetSyntax",  test1 (alloc 10 setgetSyntax) (155,0))
     , ("writeLst",  test1 (alloc 4 writeLst) (1,2))
     , ("writeVct",  test1 (alloc 4 writeVct) (1,2))
-    , ("writeVctUr",  test1 (create 4 writeVctUr) (buffer [1,2,3,4]))
+    , ("writeVctUr",  test1 (alloc 4 writeVctUr) (buffer [1,2,3,4]))
     ]

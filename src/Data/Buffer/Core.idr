@@ -102,30 +102,22 @@ unsafeMakeBuffer = IB
 
 ||| A mutable byte array.
 export
-data MBuffer' : (t : RTag) -> (n : Nat) -> Type where
-  MB : (buf : Buffer) -> MBuffer' t n
-
-||| Convenience alias for `MBuffer' RPure`
-public export
-0 MBuffer : Nat -> Type
-MBuffer = MBuffer' RPure
+data MBuffer : (s : Type) -> (n : Nat) -> Type where
+  MB : (buf : Buffer) -> MBuffer s n
 
 ||| Convenience alias for `MBuffer' RIO`
 public export
 0 IOBuffer : Nat -> Type
-IOBuffer = MBuffer' RIO
-
-public export
-InIO (MBuffer' RIO n) where
+IOBuffer = MBuffer World
 
 ||| Wraps a `Buffer` in an `IOBuffer`. Use at your own risk.
 export %inline
-unsafeMBuffer : Buffer -> MBuffer' t n
+unsafeMBuffer : Buffer -> MBuffer s n
 unsafeMBuffer = MB
 
 ||| Extracts the `Buffer` from an `MBuffer`. Use at your own risk.
 export %inline
-unsafeFromMBuffer : MBuffer' t n -> Buffer
+unsafeFromMBuffer : MBuffer s n -> Buffer
 unsafeFromMBuffer (MB buf) = buf
 
 --------------------------------------------------------------------------------
@@ -134,59 +126,34 @@ unsafeFromMBuffer (MB buf) = buf
 
 ||| Creates a new mutable bound to linear computation `s`.
 export %inline
-newMBuffer : (n : Nat) -> (1 t : T1 rs) -> A1 rs (MBuffer n)
+newMBuffer : (n : Nat) -> F1 s (MBuffer s n)
 newMBuffer n t =
   let MkIORes b _ := prim__newBuf (cast n) %MkWorld
-   in MB b # unsafeBind t
-
-||| Creates a new mutable buffer in `T1 [Wrold]`
-export %inline
-bufferIO : (n : Nat) -> a -> F1 [World] (IOBuffer n)
-bufferIO n v t = let m # t := ffi (prim__newBuf (cast n)) t in MB m # t
+   in MB b # t
 
 ||| Creates a new mutable buffer in `IO`.
 export %inline
 newIOBuffer : HasIO io => (n : Nat) -> io (IOBuffer n)
-newIOBuffer n =
-  primIO $ \w =>
-    let MkIORes m w := prim__newBuf (cast n) w
-     in MkIORes (MB m) w
+newIOBuffer n = runIO (newMBuffer n)
 
 ||| Safely write a value to a mutable byte vector.
 export %inline
-set : (r : MBuffer' t n) -> (0 p : Res r rs) => Fin n -> Bits8 -> F1' rs
+set : (r : MBuffer s n) -> Fin n -> Bits8 -> F1' s
 set (MB buf) ix v = ffi (prim__setByte buf (cast $ finToNat ix) v)
 
 ||| Safely read a value from a mutable byte array.
 export %inline
-get : (r : MBuffer' t n) -> (0 p : Res r rs) => Fin n -> F1 rs Bits8
+get : (r : MBuffer s n) -> Fin n -> F1 s Bits8
 get (MB buf) ix t = prim__getByte buf (cast $ finToNat ix) # t
 
 ||| Safely modify a value in a mutable byte array.
 export
-modify :
-     (r : MBuffer' t n)
-  -> {auto 0 p : Res r rs}
-  -> Fin n
-  -> (Bits8 -> Bits8)
-  -> F1' rs
+modify : (r : MBuffer s n) -> Fin n -> (Bits8 -> Bits8) -> F1' s
 modify r m f t = let v # t := get r m t in set r m (f v) t
-
-||| Release a byte array.
-|||
-||| Afterwards, it can no longer be use with the given linear token.
-export %inline
-release : (0 r : MBuffer n) -> (0 p : Res r rs) => C1' rs (Drop rs p)
-release _ = unsafeRelease p
 
 ||| Extracts a string from a (possibly partially) filled byte array.
 export %inline
-bufString :
-     (r : MBuffer' t n)
-  -> {auto 0 p : Res r rs}
-  -> (m : Nat)
-  -> {auto 0 lte : LTE m n}
-  -> F1 rs String
+bufString : (r : MBuffer s n) -> (m : Nat) -> (0 lte : LTE m n) => F1 s String
 bufString (MB buf) m t = prim__getString buf 0 (cast m) # t
 
 --------------------------------------------------------------------------------
@@ -195,31 +162,12 @@ bufString (MB buf) m t = prim__getString buf 0 (cast m) # t
 
 public export
 0 WithMBuffer : Nat -> (a : Type) -> Type
-WithMBuffer n a = (r : MBuffer n) -> F1 [r] a
-
-public export
-0 FromMBuffer : Nat -> (a : Type) -> Type
-FromMBuffer n a = (r : MBuffer n) -> C1 [r] [] a
+WithMBuffer n a = forall s . (r : MBuffer s n) -> F1 s a
 
 ||| Allocate and potentially freeze a mutable byte array in a linear context.
-|||
-||| Note: In case you don't need to freeze the array in the end, using `alloc`
-|||       might be more convenient.
-export
-create : (n : Nat) -> (fun : FromMBuffer n a) -> a
-create n f = run1 $ \t => let r # t := newMBuffer n t in f r t
-
-||| Allocate, use, and release a mutable byte array in a linear computation.
-|||
-||| Note: In case you want to freeze the buffer and return it in the
-|||       result, use `create`.
 export
 alloc : (n : Nat) -> (fun : WithMBuffer n a) -> a
-alloc n f =
-  create n $ \r,t =>
-    let v # t := f r t
-        _ # t := release r t
-     in v # t
+alloc n f = run1 $ \t => let r # t := newMBuffer n t in f r t
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -227,24 +175,34 @@ alloc n f =
 
 export %noinline
 copy :
+     MBuffer s m
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MBuffer s n)
+  -> F1' s
+copy (MB src) srcOffset dstOffset len (MB dst) =
+  ffi (prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset))
+
+export %inline
+icopy :
      IBuffer m
   -> (srcOffset,dstOffset : Nat)
   -> (len : Nat)
   -> {auto 0 p1 : LTE (srcOffset + len) m}
   -> {auto 0 p2 : LTE (dstOffset + len) n}
-  -> (r         : MBuffer n)
-  -> {auto 0 p  : Res r rs}
-  -> F1' rs
-copy (IB src) srcOffset dstOffset len (MB dst) =
-  ffi (prim__copy src (cast srcOffset) (cast len) dst (cast dstOffset))
+  -> (r         : MBuffer s n)
+  -> F1' s
+icopy (IB src) = copy {m} (MB src)
 
 ||| Copy the content of an immutable buffer to a new buffer.
 export
-thaw : {n : _} -> IBuffer n -> (fun : FromMBuffer n b) -> b
-thaw src f =
-  create n $ \r,t =>
-    let _ # t := copy src 0 0 n @{reflexive} @{reflexive} r t
-     in f r t
+thaw : {n : _} -> IBuffer n -> F1 s (MBuffer s n)
+thaw src t =
+    let r # t := newMBuffer n t
+        _ # t := icopy src 0 0 n @{reflexive} @{reflexive} r t
+     in r # t
 
 ||| Wrap a mutable buffer in an `IBuffer` without copying.
 |||
@@ -255,33 +213,35 @@ thaw src f =
 ||| therefore we are free to give the resulting array a smaller size.
 ||| Most of the time, we'd like to use the whole buffer, in which case
 ||| we can just use `freezeBufAt`.
+|||
+||| Note: For reasons of efficiency, this does not copy the buffer,
+|||       and therefore, it must no longer be modified after calling
+|||       this function.
 export %inline
-freezeLTE :
-     {auto 0 _ : LTE m n}
-  -> (r        : MBuffer n)
-  -> {auto 0 p : Res r rs}
+unsafeFreezeLTE :
+     MBuffer s n
   -> (0 m : Nat)
-  -> (1 t : T1 rs)
-  -> R1 (Drop rs p) (IBuffer m)
-freezeLTE (MB buf) _ t = let _ # t := unsafeRelease p t in IB buf # t
+  -> {auto 0 _ : LTE m n}
+  -> F1 s (IBuffer m)
+unsafeFreezeLTE (MB buf) _ t = IB buf # t
 
+||| Convenience alias for `unsafeFreezeLTE @{reflexive}`
 export %inline
-freeze :
-     (r : MBuffer n)
-  -> {auto 0 p : Res r rs}
-  -> (1 t : T1 rs)
-  -> R1 (Drop rs p) (IBuffer n)
-freeze r = freezeLTE @{reflexive} r n
+unsafeFreeze : (r : MBuffer s n) -> F1 s (IBuffer n)
+unsafeFreeze r = unsafeFreezeLTE @{reflexive} r n
 
-||| Release a mutable linear buffer to `IO`, thus making it freely
-||| shareable.
+||| Copy a prefix of a mutable buffer into an `IBuffer`.
+export
+freezeLTE : MBuffer s n -> (m : Nat) -> (0 p : LTE m n) => F1 s (IBuffer m)
+freezeLTE src m t =
+  let r@(MB buf) # t := newMBuffer m t
+      _          # t := copy src 0 0 m @{p} @{reflexive} r t
+   in IB buf     # t
+
+||| Copy a mutable buffer into an `IBuffer`.
 export %inline
-toIO :
-     (r : MBuffer n)
-  -> {auto 0 p : Res r rs}
-  -> (1 t : T1 rs)
-  -> R1 (Drop rs p) (IO Buffer)
-toIO (MB buf) t = let _ # t := unsafeRelease p t in pure buf # t
+freeze : {n : _} -> MBuffer s n -> F1 s (IBuffer n)
+freeze src = freezeLTE src n @{reflexive}
 
 --------------------------------------------------------------------------------
 --          Reading and Writing Files
@@ -321,9 +281,7 @@ writeMBuffer :
   -> File
   -> (offset,len : Nat)
   -> {auto 0 prf : LTE (offset + len) n}
-  -> (r : MBuffer n)
-  -> {auto 0 p : Res r rs}
-  -> T1 rs
-  -> R1 (Drop rs p) (io (Either (FileError,Int) ()))
-writeMBuffer h o s (MB b) t =
-  let _ # t := unsafeRelease p t in writeBufferData h b (cast o) (cast s) # t
+  -> (r : MBuffer s n)
+  -> io (Either (FileError,Int) ())
+writeMBuffer h o s (MB b) =
+  writeBufferData h b (cast o) (cast s)

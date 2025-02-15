@@ -11,5 +11,4 @@ executable = "array-test"
 sourcedir  = "src"
 
 depends    = array
-           , containers
            , hedgehog

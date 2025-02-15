@@ -30,23 +30,23 @@ atNat arr x = at arr (natToFinLT x)
 ||| The empty array.
 export
 empty : IBuffer 0
-empty = create 0 $ \r,t => freeze r t
+empty = alloc 0 unsafeFreeze
 
 ||| Copy the values in a list to an array of the same length.
 export %inline
 bufferL : (ls : List Bits8) -> IBuffer (length ls)
 bufferL xs =
-  create (length xs) $ \r,t =>
+  alloc (length xs) $ \r,t =>
     let _ # t := writeList {xs} r xs t
-     in freeze r t
+     in unsafeFreeze r t
 
 ||| Copy the values in a vector to an array of the same length.
 export %inline
 buffer : {n : _} -> Vect n Bits8 -> IBuffer n
 buffer xs =
-  create n $ \r,t =>
+  alloc n $ \r,t =>
     let _ # t := writeVect r xs t
-     in freeze r t
+     in unsafeFreeze r t
 
 ||| Copy the values in a vector to an array of the same length
 ||| in reverse order.
@@ -56,18 +56,18 @@ buffer xs =
 export %inline
 revBuffer : {n : _} -> Vect n Bits8 -> IBuffer n
 revBuffer xs =
-  create n $ \r,t =>
+  alloc n $ \r,t =>
     let _ # t := writeVectRev r n xs t
-     in freeze r t
+     in unsafeFreeze r t
 
 ||| Generate an immutable array of the given size using
 ||| the given iteration function.
 export %inline
 generate : (n : Nat) -> (Fin n -> Bits8) -> IBuffer n
 generate n f =
-  create n $ \r,t =>
+  alloc n $ \r,t =>
     let _ # t := genFrom r n f t
-     in freeze r t
+     in unsafeFreeze r t
 
 ||| Fill an immutable array of the given size with the given value
 export %inline
@@ -79,9 +79,9 @@ fill n = generate n . const
 export %inline
 iterate : (n : Nat) -> (f : Bits8 -> Bits8) -> Bits8 -> IBuffer n
 iterate n f v =
-  create n $ \r,t =>
+  alloc n $ \r,t =>
     let _ # t := iterateFrom r n f v t
-     in freeze r t
+     in unsafeFreeze r t
 
 ||| Copy the content of a byte array to a new array.
 |||
@@ -90,7 +90,7 @@ iterate n f v =
 ||| instance after taking a smalle prefix of a large array with `take`.
 export
 force : {n : _} -> IBuffer n -> IBuffer n
-force buf = thaw buf $ \r,t => freeze r t
+force buf = run1 $ \t => let r # t := thaw buf t in unsafeFreeze r t
 
 --------------------------------------------------------------------------------
 --          Eq and Ord
@@ -318,7 +318,7 @@ traverse = traverseWithIndex . const
 export
 append : {m,n : _} -> IBuffer m -> IBuffer n -> IBuffer (m + n)
 append src1 src2 =
-  create (m+n) $ \r,t =>
-    let _ # t := copy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
-        _ # t := copy src2 0 m n @{reflexive} @{reflexive} r t
-     in freeze r t
+  alloc (m+n) $ \r,t =>
+    let _ # t := icopy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
+        _ # t := icopy src2 0 m n @{reflexive} @{reflexive} r t
+     in unsafeFreeze r t
