@@ -36,7 +36,7 @@ prog Mut    m ref = mutinc m ref ITER
 runProg : Prog -> Nat -> IO Nat
 runProg prg n = do
   mut <- makeMutex
-  ref <- newIOArray 1 Z
+  ref <- marray 1 Z
   ts  <- sequence $ V.replicate n (fork $ prog prg mut ref)
   traverse_ (\t => threadWait t) ts
   runIO (get ref 0)
