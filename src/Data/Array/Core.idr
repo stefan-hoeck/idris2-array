@@ -75,24 +75,24 @@ IOArray = MArray World
 
 ||| Fills a new mutable bound to linear computation `s`.
 export %inline
-newMArray : (n : Nat) -> a -> F1 s (MArray s n a)
-newMArray n v t =
+marray1 : (n : Nat) -> a -> F1 s (MArray s n a)
+marray1 n v t =
   let m # t := ffi (prim__newArray (cast n) v) t in MA m # t
 
 ||| Fills a new mutable array in `IO`
 export %inline
-newIOArray : HasIO io => (n : Nat) -> a -> io (IOArray n a)
-newIOArray n v = runIO (newMArray n v)
+marray : Lift1 s f => (n : Nat) -> a -> f (MArray s n a)
+marray n v = lift1 (marray1 n v)
 
 export %inline
-unsafeNewMArray : (n : Nat) -> F1 s (MArray s n a)
-unsafeNewMArray n t =
+unsafeMArray1 : (n : Nat) -> F1 s (MArray s n a)
+unsafeMArray1 n t =
   let m # t := ffi (prim__emptyArray (cast n)) t in MA m # t
 
 ||| Allocates a new, empty, mutable array in `IO`
 export %inline
-unsafeNewIOArray : HasIO io => (n : Nat) -> io (IOArray n a)
-unsafeNewIOArray n = runIO (unsafeNewMArray n)
+unsafeMArray : Lift1 s f => (n : Nat) -> f (MArray s n a)
+unsafeMArray n = lift1 (unsafeMArray1 n)
 
 ||| Safely write a value to a mutable array.
 export %inline
@@ -174,7 +174,7 @@ WithMArray n a b = forall s . (r : MArray s n a) -> F1 s b
 ||| Allocate and use a mutable array in a linear context.
 export
 alloc : (n : Nat) -> a -> (fun : WithMArray n a b) -> b
-alloc n v f = run1 $ \t => let r # t2 := newMArray n v t in f r t2
+alloc n v f = run1 $ \t => let r # t2 := marray1 n v t in f r t2
 
 ||| Like `create` but the initially created array will not hold any
 ||| sensible data.
@@ -187,7 +187,7 @@ alloc n v f = run1 $ \t => let r # t2 := newMArray n v t in f r t2
 ||| See for instance the implementation of `filter` or `mapMaybe`.
 export
 unsafeAlloc : (n : Nat) -> (fun : WithMArray n a b) -> b
-unsafeAlloc n f = run1 $ \t => let r # t2 := unsafeNewMArray n t in f r t2
+unsafeAlloc n f = run1 $ \t => let r # t2 := unsafeMArray1 n t in f r t2
 
 ||| Wrap a mutable array in an `IArray`, which can then be freely shared.
 |||
