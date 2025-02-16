@@ -203,7 +203,7 @@ parameters {n : Nat}
   export
   mgrow : (m : Nat) -> (deflt : a) -> F1 s (MArray s (m+n) a)
   mgrow m deflt t =
-    let tgt # t := newMArray (m+n) deflt t
+    let tgt # t := marray1 (m+n) deflt t
         _   # t := writeMArray n tgt t
      in tgt # t
 

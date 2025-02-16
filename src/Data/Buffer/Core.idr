@@ -126,15 +126,15 @@ unsafeFromMBuffer (MB buf) = buf
 
 ||| Creates a new mutable bound to linear computation `s`.
 export %inline
-newMBuffer : (n : Nat) -> F1 s (MBuffer s n)
-newMBuffer n t =
+mbuffer1 : (n : Nat) -> F1 s (MBuffer s n)
+mbuffer1 n t =
   let MkIORes b _ := prim__newBuf (cast n) %MkWorld
    in MB b # t
 
 ||| Creates a new mutable buffer in `IO`.
 export %inline
-newIOBuffer : HasIO io => (n : Nat) -> io (IOBuffer n)
-newIOBuffer n = runIO (newMBuffer n)
+mbuffer : Lift1 s f => (n : Nat) -> f (MBuffer s n)
+mbuffer n = lift1 (mbuffer1 n)
 
 ||| Safely write a value to a mutable byte vector.
 export %inline
@@ -167,7 +167,7 @@ WithMBuffer n a = forall s . (r : MBuffer s n) -> F1 s a
 ||| Allocate and potentially freeze a mutable byte array in a linear context.
 export
 alloc : (n : Nat) -> (fun : WithMBuffer n a) -> a
-alloc n f = run1 $ \t => let r # t := newMBuffer n t in f r t
+alloc n f = run1 $ \t => let r # t := mbuffer1 n t in f r t
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -200,7 +200,7 @@ icopy (IB src) = copy {m} (MB src)
 export
 thaw : {n : _} -> IBuffer n -> F1 s (MBuffer s n)
 thaw src t =
-    let r # t := newMBuffer n t
+    let r # t := mbuffer1 n t
         _ # t := icopy src 0 0 n @{reflexive} @{reflexive} r t
      in r # t
 
@@ -234,7 +234,7 @@ unsafeFreeze r = unsafeFreezeLTE @{reflexive} r n
 export
 freezeLTE : MBuffer s n -> (m : Nat) -> (0 p : LTE m n) => F1 s (IBuffer m)
 freezeLTE src m t =
-  let r@(MB buf) # t := newMBuffer m t
+  let r@(MB buf) # t := mbuffer1 m t
       _          # t := copy src 0 0 m @{p} @{reflexive} r t
    in IB buf     # t
 
