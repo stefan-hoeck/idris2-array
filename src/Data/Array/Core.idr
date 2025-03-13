@@ -28,6 +28,13 @@ prim__emptyArray : Bits32 -> PrimIO AnyPtr
          "javascript:lambda:(a,x,i,v,w) => {if (x[i] === v) {x[i] = w; return 1;} else {return 0;}}"
 prim__casSet : AnyPtr -> Bits32 -> (prev,val : a) -> Bits8
 
+
+export
+%foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (+ o2 i) (vector-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
+         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__copyArray : (src : AnyPtr) -> (srcOffset, len : Bits32) ->
+                  (dst : AnyPtr) -> (dstOffset : Bits32) -> PrimIO ()
+
 --------------------------------------------------------------------------------
 --          Immutable Arrays
 --------------------------------------------------------------------------------
@@ -163,6 +170,37 @@ export %inline
 mtake : MArray s n a -> (0 m : Nat) -> (0 lte : LTE m n) => F1 s (MArray s m a)
 mtake (MA arr) _ t = MA arr # t
 
+export %noinline
+copy :
+     MArray s m a
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MArray s n a)
+  -> F1' s
+copy (MA src) srcOffset dstOffset len (MA dst) =
+  ffi (prim__copyArray src (cast srcOffset) (cast len) dst (cast dstOffset))
+
+export %inline
+icopy :
+     IArray m a
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MArray s n a)
+  -> F1' s
+icopy (IA src) = copy {m} (MA src)
+
+||| Copy the content of an immutable array to a new array.
+export
+thaw : {n : _} -> IArray n a -> F1 s (MArray s n a)
+thaw src t =
+    let r # t := unsafeMArray1 n t
+        _ # t := icopy src 0 0 n @{reflexive} @{reflexive} r t
+     in r # t
+
 --------------------------------------------------------------------------------
 -- Allocating Arrays
 --------------------------------------------------------------------------------
@@ -220,3 +258,16 @@ unsafeFreezeLTE (MA arr) _ t = IA arr # t
 export %inline
 unsafeFreeze : (r : MArray s n a) -> F1 s (IArray n a)
 unsafeFreeze r = unsafeFreezeLTE @{reflexive} r n
+
+||| Copy a prefix of a mutable buffer into an `IBuffer`.
+export
+freezeLTE : MArray s n a -> (m : Nat) -> (0 p : LTE m n) => F1 s (IArray m a)
+freezeLTE src m t =
+  let r@(MA buf) # t := unsafeMArray1 m t
+      _          # t := copy src 0 0 m @{p} @{reflexive} r t
+   in IA buf     # t
+
+||| Copy a mutable buffer into an `IBuffer`.
+export %inline
+freeze : {n : _} -> MArray s n a -> F1 s (IArray n a)
+freeze src = freezeLTE src n @{reflexive}
