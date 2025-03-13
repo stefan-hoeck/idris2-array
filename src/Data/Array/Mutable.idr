@@ -191,20 +191,13 @@ allocIter n f v g =
 parameters {n : Nat}
            (r : MArray s n a)
 
-  writeMArray :  (k : Nat) -> (0 lte : LTE k n) => MArray s (m+n) a -> F1' s
-  writeMArray 0     tgt t = () # t
-  writeMArray (S k) tgt t =
-    let v # t := getNat r k t
-        _ # t := setNat tgt k {lt = ltAddLeft lte} v t
-     in writeMArray k tgt t
-
   ||| Allocates a new mutable array and adds the elements from `r`
   ||| at its beginning.
   export
   mgrow : (m : Nat) -> (deflt : a) -> F1 s (MArray s (m+n) a)
   mgrow m deflt t =
     let tgt # t := marray1 (m+n) deflt t
-        _   # t := writeMArray n tgt t
+        _   # t := copy r 0 0 n @{reflexive} @{lteAddLeft n} tgt t
      in tgt # t
 
 --------------------------------------------------------------------------------

@@ -424,4 +424,8 @@ listConcat as = snocConcat ([<] <>< as)
 ||| Concatenate two arrays in O(m+n) runtime.
 export
 append : {m,n : Nat} -> IArray m a -> IArray n a -> IArray (m + n) a
-append xs ys = snocConcat [<A m xs, A n ys]
+append src1 src2 =
+  unsafeAlloc (m+n) $ \r,t =>
+    let _ # t := icopy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
+        _ # t := icopy src2 0 m n @{reflexive} @{reflexive} r t
+     in unsafeFreeze r t

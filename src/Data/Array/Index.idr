@@ -271,6 +271,10 @@ export
 ltAddLeft {m = 0}   lt = lt
 ltAddLeft {m = S x} lt = lteSuccRight $ ltAddLeft lt
 
+export
+0 lteAddLeft : (n : Nat) -> LTE n (m+n)
+lteAddLeft n = rewrite plusCommutative m n in lteAddRight n
+
 --------------------------------------------------------------------------------
 --          Relations
 --------------------------------------------------------------------------------
