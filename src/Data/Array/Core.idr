@@ -3,14 +3,21 @@
 module Data.Array.Core
 
 import Data.Array.Index
+import Data.Buffer
 import Data.Linear
 import Data.Linear.Token
 import Data.Fin
 import Data.Nat
 
+import Data.Buffer.Core as BC
+
 import Syntax.T1
 
 %default total
+
+%hide BC.get
+%hide BC.icopy
+%hide BC.copy
 
 --------------------------------------------------------------------------------
 --          Raw Primitives
@@ -34,6 +41,18 @@ export
          "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
 prim__copyArray : (src : AnyPtr) -> (srcOffset, len : Bits32) ->
                   (dst : AnyPtr) -> (dstOffset : Bits32) -> PrimIO ()
+
+export
+%foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (+ o2 i) (bytevector-u8-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
+         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__bufToArr : (src : Buffer) -> (srcOffset, len : Bits32) ->
+                 (dst : AnyPtr) -> (dstOffset : Bits32) -> PrimIO ()
+
+export
+%foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (bytevector-u8-set! b2 (+ o2 i) (vector-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
+         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__arrToBuf : (src : AnyPtr) -> (srcOffset, len : Bits32) ->
+                 (dst : Buffer) -> (dstOffset : Bits32) -> PrimIO ()
 
 --------------------------------------------------------------------------------
 --          Immutable Arrays
@@ -193,6 +212,52 @@ icopy :
   -> F1' s
 icopy (IA src) = copy {m} (MA src)
 
+export %noinline
+copyToBuf :
+     MArray s m Bits8
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MBuffer s n)
+  -> F1' s
+copyToBuf (MA src) srcOffset dstOffset len dst =
+  ffi (prim__arrToBuf src (cast srcOffset) (cast len) (unsafeFromMBuffer dst) (cast dstOffset))
+
+export %inline
+icopyToBuf :
+     IArray m Bits8
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MBuffer s n)
+  -> F1' s
+icopyToBuf (IA src) = copyToBuf {m} (MA src)
+
+export %noinline
+copyToArray :
+     MBuffer s m
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MArray s n Bits8)
+  -> F1' s
+copyToArray src srcOffset dstOffset len (MA dst) =
+  ffi (prim__bufToArr (unsafeFromMBuffer src) (cast srcOffset) (cast len) dst (cast dstOffset))
+
+export %inline
+icopyToArray :
+     IBuffer m
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MArray s n Bits8)
+  -> F1' s
+icopyToArray buf = copyToArray {m} (unsafeMBuffer $ unsafeGetBuffer buf)
+
 ||| Copy the content of an immutable array to a new array.
 export
 thaw : {n : _} -> IArray n a -> F1 s (MArray s n a)
@@ -271,3 +336,23 @@ freezeLTE src m t =
 export %inline
 freeze : {n : _} -> MArray s n a -> F1 s (IArray n a)
 freeze src = freezeLTE src n @{reflexive}
+
+--------------------------------------------------------------------------------
+--          Array Conversions
+--------------------------------------------------------------------------------
+
+||| Copies an array of bytes to a buffer
+export
+toIBuffer : {n : _} -> IArray n Bits8 -> IBuffer n
+toIBuffer arr =
+  alloc n $ \buf,t =>
+   let _ # t := icopyToBuf arr 0 0 n buf t
+    in unsafeFreeze buf t
+
+||| Copies a buffer to an array of bytes
+export
+toIArray : {n : _} -> IBuffer n -> IArray n Bits8
+toIArray buf =
+  alloc n (the Bits8 0) $ \arr,t =>
+   let _ # t := icopyToArray buf 0 0 n arr t
+    in unsafeFreeze arr t

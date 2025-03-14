@@ -1,6 +1,7 @@
 module Buffer
 
 import Control.Monad.Identity
+import Data.Array.Core
 import Data.Buffer
 import Data.Buffer.Core
 import Data.Buffer.Indexed
@@ -13,6 +14,9 @@ import Hedgehog
 
 bufferOf : (n : _) -> Gen Bits8 -> Gen (IBuffer n)
 bufferOf n g = buffer <$> vect n g
+
+arr : (n : _) -> Gen (IArray n Bits8)
+arr n = array <$> vect n anyBits8
 
 buf : (n : Nat) -> Gen (IBuffer n)
 buf n = bufferOf n anyBits8
@@ -116,7 +120,7 @@ prop_generate = property1 $
 
 prop_iterate : Property
 prop_iterate = property1 $
-  toList (Indexed.iterate 5 (*3) 1) === [1,3,9,27,81]
+  Indexed.toList (Indexed.iterate 5 (*3) 1) === [1,3,9,27,81]
 
 prop_foldrKV : Property
 prop_foldrKV = property1 $
@@ -133,6 +137,18 @@ prop_traverse_id = property $ do
   n <- forAll (nat $ linear 0 20)
   x <- forAll (buf n)
   traverse Id x === Id x
+
+prop_array_roundtrip : Property
+prop_array_roundtrip = property $ do
+  n <- forAll (nat $ linear 0 20)
+  x <- forAll (buf n)
+  toIBuffer (toIArray x) === x
+
+prop_buffer_roundtrip : Property
+prop_buffer_roundtrip = property $ do
+  n <- forAll (nat $ linear 0 20)
+  x <- forAll (arr n)
+  toIArray (toIBuffer x) === x
 
 export
 props : Group
@@ -156,5 +172,7 @@ props = MkGroup "Buffer"
   , ("prop_foldrKV", prop_foldrKV)
   , ("prop_foldlKV", prop_foldlKV)
   , ("prop_traverse_id", prop_traverse_id)
+  , ("prop_array_roundtrip", prop_array_roundtrip)
+  , ("prop_buffer_roundtrip", prop_buffer_roundtrip)
   ]
 
