@@ -24,35 +24,53 @@ import Syntax.T1
 --------------------------------------------------------------------------------
 
 %foreign "scheme:(lambda (x) (make-vector x))"
-         "javascript:lambda:(n) => new Array(n)"
-prim__emptyArray : Bits32 -> PrimIO AnyPtr
+         "javascript:lambda:(n,w) => new Array(Number(n))"
+prim__emptyArray : Integer -> PrimIO AnyPtr
 
-%extern prim__newArray : forall a . Bits32 -> a -> PrimIO AnyPtr
-%extern prim__arrayGet : forall a . AnyPtr -> Bits32 -> PrimIO a
-%extern prim__arraySet : forall a . AnyPtr -> Bits32 -> a -> PrimIO ()
+%foreign "scheme:(lambda (x i) (make-vector x i))"
+         "javascript:lambda:(bi,x,w) => Array(Number(bi)).fill(x)"
+prim__newArray : Integer -> AnyPtr -> PrimIO AnyPtr
+
+%foreign "scheme:(lambda (x i) (vector-ref x i))"
+         "javascript:lambda:(x,bi) => x[Number(bi)]"
+prim__arrayGet : AnyPtr -> Integer -> AnyPtr
+
+-- This is an optimized version of `prim_arrayGet` that allows us to read
+-- at an offset. On Chez, we can use the faster fixnum addition here,
+-- which can lead to a performance boost.
+%foreign "scheme:(lambda (b a o) (vector-ref b (+ a o)))"
+         "scheme,chez:(lambda (b a o) (vector-ref b (fx+ a o)))"
+         "javascript:lambda:(buf,at,offset)=>buf[Number(offset) + Number(at)]"
+prim__arrayGetOffset : AnyPtr -> (at, offset : Integer) -> AnyPtr
+
+%foreign "scheme:(lambda (x i w) (vector-set! x i w))"
+         "javascript:lambda:(x,bi,w) => {const i = Number(bi); x[i] = w}"
+prim__arraySet : AnyPtr -> Integer -> (val : AnyPtr) -> PrimIO ()
 
 %foreign "scheme:(lambda (a x i v w) (if (vector-cas! x i v w) 1 0))"
-         "javascript:lambda:(a,x,i,v,w) => {if (x[i] === v) {x[i] = w; return 1;} else {return 0;}}"
-prim__casSet : AnyPtr -> Bits32 -> (prev,val : a) -> Bits8
-
+         "javascript:lambda:(a,x,bi,v,w) => {const i = Number(bi); if (x[i] === v) {x[i] = w; return 1;} else {return 0;}}"
+prim__casSet : AnyPtr -> Integer -> (prev,val : a) -> Bits8
 
 export
 %foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (+ o2 i) (vector-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
-         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
-prim__copyArray : (src : AnyPtr) -> (srcOffset, len : Bits32) ->
-                  (dst : AnyPtr) -> (dstOffset : Bits32) -> PrimIO ()
+         "scheme,chez: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (fx+ o2 i) (vector-ref b1 (fx+ o1 i))) (go (fx+ 1 i))))))) (go 0)))"
+         "javascript:lambda:(b1,bo1,blen,b2,bo2,t)=> {const o1 = Number(bo1); const len = Number(blen); const o2 = Number(bo2); for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__copyArray : (src : AnyPtr) -> (srcOffset, len : Integer) ->
+                  (dst : AnyPtr) -> (dstOffset : Integer) -> PrimIO ()
 
 export
 %foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (+ o2 i) (bytevector-u8-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
-         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
-prim__bufToArr : (src : Buffer) -> (srcOffset, len : Bits32) ->
-                 (dst : AnyPtr) -> (dstOffset : Bits32) -> PrimIO ()
+         "scheme,chez: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (fx+ o2 i) (bytevector-u8-ref b1 (fx+ o1 i))) (go (fx+ 1 i))))))) (go 0)))"
+         "javascript:lambda:(b1,bo1,blen,b2,bo2,t)=> {const o1 = Number(bo1); const len = Number(blen); const o2 = Number(bo2); for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__bufToArr : (src : Buffer) -> (srcOffset, len : Integer) ->
+                 (dst : AnyPtr) -> (dstOffset : Integer) -> PrimIO ()
 
 export
 %foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (bytevector-u8-set! b2 (+ o2 i) (vector-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
-         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
-prim__arrToBuf : (src : AnyPtr) -> (srcOffset, len : Bits32) ->
-                 (dst : Buffer) -> (dstOffset : Bits32) -> PrimIO ()
+         "scheme,chez: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (bytevector-u8-set! b2 (fx+ o2 i) (vector-ref b1 (fx+ o1 i))) (go (fx+ 1 i))))))) (go 0)))"
+         "javascript:lambda:(b1,bo1,blen,b2,bo2,t)=> {const o1 = Number(bo1); const len = Number(blen); const o2 = Number(bo2); for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__arrToBuf : (src : AnyPtr) -> (srcOffset, len : Integer) ->
+                 (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
 
 --------------------------------------------------------------------------------
 --          Immutable Arrays
@@ -67,9 +85,14 @@ record IArray (n : Nat) (a : Type) where
 ||| Safely access a value in an array at the given position.
 export %inline
 at : IArray n a -> Fin n -> a
-at (IA ad) m =
-  let MkIORes v _ := prim__arrayGet ad (cast $ finToNat m) %MkWorld
-   in v
+at (IA ad) m = believe_me $ prim__arrayGet ad (cast $ finToNat m)
+
+||| Safely access a value in an array at the given position
+||| and offset.
+export %inline
+atOffset : IArray n a -> Fin m -> (off : Nat) -> (0 p : LTE (off+m) n) => a
+atOffset (IA ad) m off =
+  believe_me $ prim__arrayGetOffset ad (cast $ finToNat m) (cast off)
 
 ||| We can wrap a prefix of an array in O(1) simply by giving it
 ||| a new size index.
@@ -103,7 +126,7 @@ IOArray = MArray World
 export %inline
 marray1 : (n : Nat) -> a -> F1 s (MArray s n a)
 marray1 n v t =
-  let m # t := ffi (prim__newArray (cast n) v) t in MA m # t
+  let p # t := ffi (prim__newArray (cast n) (believe_me v)) t in MA p # t
 
 ||| Fills a new mutable array in `IO`
 export %inline
@@ -113,7 +136,7 @@ marray n v = lift1 (marray1 n v)
 export %inline
 unsafeMArray1 : (n : Nat) -> F1 s (MArray s n a)
 unsafeMArray1 n t =
-  let m # t := ffi (prim__emptyArray (cast n)) t in MA m # t
+  let p # t := ffi (prim__emptyArray (cast n)) t in MA p # t
 
 ||| Allocates a new, empty, mutable array in `IO`
 export %inline
@@ -123,7 +146,7 @@ unsafeMArray n = lift1 (unsafeMArray1 n)
 ||| Safely write a value to a mutable array.
 export %inline
 set : (r : MArray s n a) -> Fin n -> a -> F1' s
-set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) v)
+set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) (believe_me v))
 
 ||| Safely read a value from a mutable array.
 |||
@@ -132,7 +155,7 @@ set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) v)
 ||| linear context.
 export %inline
 get : (r : MArray s n a) -> Fin n -> F1 s a
-get (MA arr) ix = ffi (prim__arrayGet arr (cast $ finToNat ix))
+get (MA arr) ix t = believe_me (prim__arrayGet arr (cast $ finToNat ix)) # t
 
 ||| Safely modify a value in a mutable array.
 export %inline

@@ -15,23 +15,32 @@ import System.File
 
 export
 %foreign "scheme:(lambda (b o) (bytevector-u8-ref b o))"
-         "javascript:lambda:(buf,offset)=>buf[offset]"
-prim__getByte : Buffer -> (offset : Bits32) -> Bits8
+         "javascript:lambda:(buf,offset)=>buf[Number(offset)]"
+prim__getByte : Buffer -> (offset : Integer) -> Bits8
+
+||| This is an optimized version of `getByte` that allows us to read
+||| at an offset. On Chez, we can use the faster fixnum addition here,
+||| which can lead to a performance boost.
+export
+%foreign "scheme:(lambda (b a o) (bytevector-u8-ref b (+ a o)))"
+         "scheme,chez:(lambda (b a o) (bytevector-u8-ref b (fx+ a o)))"
+         "javascript:lambda:(buf,at,offset)=>buf[Number(offset) + Number(at)]"
+prim__getByteOffset : Buffer -> (at, offset : Integer) -> Bits8
 
 export
 %foreign "scheme:(lambda (b o v) (bytevector-u8-set! b o v))"
-         "javascript:lambda:(buf,offset,value,t)=>{buf[offset] = value; return t}"
-prim__setByte : Buffer -> (offset : Bits32) -> (val : Bits8) -> PrimIO ()
+         "javascript:lambda:(buf,offset,value,t)=>{buf[Number(offset)] = value; return t}"
+prim__setByte : Buffer -> (offset : Integer) -> (val : Bits8) -> PrimIO ()
 
 export
 %foreign "scheme:(lambda (n) (make-bytevector n 0))"
-         "javascript:lambda:(s,w)=>new Uint8Array(s)"
-prim__newBuf : Bits32 -> PrimIO Buffer
+         "javascript:lambda:(s,w)=>new Uint8Array(Number(s))"
+prim__newBuf : Integer -> PrimIO Buffer
 
 export
 %foreign "scheme:blodwen-buffer-getstring"
-         "javascript:lambda:(buf,offset,len)=> new TextDecoder().decode(buf.subarray(offset, offset+len))"
-prim__getString : Buffer -> (offset,len : Bits32) -> String
+         "javascript:lambda:(buf,offset,len)=> new TextDecoder().decode(buf.subarray(Number(offset), Number(offset+len)))"
+prim__getString : Buffer -> (offset,len : Integer) -> String
 
 export
 %foreign "scheme:(lambda (v) (string->utf8 v))"
@@ -40,9 +49,9 @@ prim__fromString : (val : String) -> Buffer
 
 export
 %foreign "scheme:(lambda (b1 o1 len b2 o2) (bytevector-copy! b1 o1 b2 o2 len))"
-         "javascript:lambda:(b1,o1,len,b2,o2,t)=> {for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
-prim__copy : (src : Buffer) -> (srcOffset, len : Bits32) ->
-             (dst : Buffer) -> (dstOffset : Bits32) -> PrimIO ()
+         "javascript:lambda:(b1,bo1,blen,b2,bo2,t)=> {const o1 = Number(bo1); const len = Number(blen); const o2 = Number(bo2); for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
+prim__copy : (src : Buffer) -> (srcOffset, len : Integer) ->
+             (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
 
 --------------------------------------------------------------------------------
 --          Immutable Buffers
@@ -58,6 +67,13 @@ record IBuffer (n : Nat) where
 export %inline
 at : IBuffer n -> Fin n -> Bits8
 at (IB buf) m = prim__getByte buf (cast $ finToNat m)
+
+||| Safely access a value in a buffer at the given position
+||| and offset.
+export %inline
+atOffset : IBuffer n -> Fin m -> (off : Nat) -> (0 p : LTE (off+m) n) => Bits8
+atOffset (IB buf) m off =
+  prim__getByteOffset buf (cast $ finToNat m) (cast off)
 
 ||| We can wrap a prefix of a byte array in O(1) simply by giving it
 ||| a new size index.
