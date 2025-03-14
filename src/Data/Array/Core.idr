@@ -35,6 +35,13 @@ prim__newArray : Integer -> AnyPtr -> PrimIO AnyPtr
          "javascript:lambda:(x,bi) => x[Number(bi)]"
 prim__arrayGet : AnyPtr -> Integer -> AnyPtr
 
+-- This is an optimized version of `prim_arrayGet` that allows us to read
+-- at an offset. On Chez, we can use the faster fixnum addition here,
+-- which can lead to a performance boost.
+%foreign "scheme:(lambda (b a o) (vector-ref b (fx+ a o)))"
+         "javascript:lambda:(buf,at,offset)=>buf[Number(offset) + Number(at)]"
+prim__arrayGetOffset : AnyPtr -> (at, offset : Integer) -> AnyPtr
+
 %foreign "scheme:(lambda (x i w) (vector-set! x i w))"
          "javascript:lambda:(x,bi,w) => {const i = Number(bi); x[i] = w}"
 prim__arraySet : AnyPtr -> Integer -> (val : AnyPtr) -> PrimIO ()
@@ -45,13 +52,13 @@ prim__casSet : AnyPtr -> Integer -> (prev,val : a) -> Bits8
 
 
 export
-%foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (+ o2 i) (vector-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
+%foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (fx+ o2 i) (vector-ref b1 (fx+ o1 i))) (go (fx+ 1 i))))))) (go 0)))"
          "javascript:lambda:(b1,bo1,blen,b2,bo2,t)=> {const o1 = Number(bo1); const len = Number(blen); const o2 = Number(bo2); for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
 prim__copyArray : (src : AnyPtr) -> (srcOffset, len : Integer) ->
                   (dst : AnyPtr) -> (dstOffset : Integer) -> PrimIO ()
 
 export
-%foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (+ o2 i) (bytevector-u8-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
+%foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (fx+ o2 i) (bytevector-u8-ref b1 (fx+ o1 i))) (go (fx+ 1 i))))))) (go 0)))"
          "javascript:lambda:(b1,bo1,blen,b2,bo2,t)=> {const o1 = Number(bo1); const len = Number(blen); const o2 = Number(bo2); for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
 prim__bufToArr : (src : Buffer) -> (srcOffset, len : Integer) ->
                  (dst : AnyPtr) -> (dstOffset : Integer) -> PrimIO ()
@@ -76,6 +83,13 @@ record IArray (n : Nat) (a : Type) where
 export %inline
 at : IArray n a -> Fin n -> a
 at (IA ad) m = believe_me $ prim__arrayGet ad (cast $ finToNat m)
+
+||| Safely access a value in an array at the given position
+||| and offset.
+export %inline
+atOffset : IArray n a -> Fin m -> (off : Nat) -> (0 p : LTE (off+m) n) => a
+atOffset (IA ad) m off =
+  believe_me $ prim__arrayGetOffset ad (cast $ finToNat m) (cast off)
 
 ||| We can wrap a prefix of an array in O(1) simply by giving it
 ||| a new size index.

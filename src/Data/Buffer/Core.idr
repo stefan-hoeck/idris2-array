@@ -18,6 +18,14 @@ export
          "javascript:lambda:(buf,offset)=>buf[Number(offset)]"
 prim__getByte : Buffer -> (offset : Integer) -> Bits8
 
+||| This is an optimized version of `getByte` that allows us to read
+||| at an offset. On Chez, we can use the faster fixnum addition here,
+||| which can lead to a performance boost.
+export
+%foreign "scheme:(lambda (b a o) (bytevector-u8-ref b (fx+ a o)))"
+         "javascript:lambda:(buf,at,offset)=>buf[Number(offset) + Number(at)]"
+prim__getByteOffset : Buffer -> (at, offset : Integer) -> Bits8
+
 export
 %foreign "scheme:(lambda (b o v) (bytevector-u8-set! b o v))"
          "javascript:lambda:(buf,offset,value,t)=>{buf[Number(offset)] = value; return t}"
@@ -58,6 +66,13 @@ record IBuffer (n : Nat) where
 export %inline
 at : IBuffer n -> Fin n -> Bits8
 at (IB buf) m = prim__getByte buf (cast $ finToNat m)
+
+||| Safely access a value in a buffer at the given position
+||| and offset.
+export %inline
+atOffset : IBuffer n -> Fin m -> (off : Nat) -> (0 p : LTE (off+m) n) => Bits8
+atOffset (IB buf) m off =
+  prim__getByteOffset buf (cast $ finToNat m) (cast off)
 
 ||| We can wrap a prefix of a byte array in O(1) simply by giving it
 ||| a new size index.
