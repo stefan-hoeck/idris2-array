@@ -22,7 +22,8 @@ prim__getByte : Buffer -> (offset : Integer) -> Bits8
 ||| at an offset. On Chez, we can use the faster fixnum addition here,
 ||| which can lead to a performance boost.
 export
-%foreign "scheme:(lambda (b a o) (bytevector-u8-ref b (fx+ a o)))"
+%foreign "scheme:(lambda (b a o) (bytevector-u8-ref b (+ a o)))"
+         "chez:(lambda (b a o) (bytevector-u8-ref b (fx+ a o)))"
          "javascript:lambda:(buf,at,offset)=>buf[Number(offset) + Number(at)]"
 prim__getByteOffset : Buffer -> (at, offset : Integer) -> Bits8
 
