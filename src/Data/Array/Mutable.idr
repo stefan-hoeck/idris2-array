@@ -211,11 +211,11 @@ parameters {m, n : Nat}
   ||| Allocates a new mutable array and adds the elements from `p`
   ||| at its beginning, followed by adding the elements from `q`.
   export
-  mappend : (deflt : a) -> F1 s (MArray s (n+m) a)
-  mappend deflt t =
-    let tgt # t := marray1 (n+m) deflt t
+  mappend : F1 s (MArray s (m+n) a)
+  mappend t =
+    let tgt # t := unsafeMArray1 (m+n) t
         _   # t := copy p 0 0 m @{reflexive} @{lteAddLeft m} tgt t
-        _   # t := copy q 0 m n @{lteAddLeft (m+n)} tgt t
+        _   # t := copy q 0 m n @{reflexive} @{lteAddLeft (m+n)} tgt t
       in tgt # t
 
 --------------------------------------------------------------------------------
