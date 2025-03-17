@@ -197,7 +197,8 @@ parameters {n : Nat}
   mgrow : (m : Nat) -> (deflt : a) -> F1 s (MArray s (m+n) a)
   mgrow m deflt t =
     let tgt # t := marray1 (m+n) deflt t
-        _   # t := copy r 0 0 n @{reflexive} @{lteAddLeft n} tgt t
+--        _   # t := copy r 0 0 n @{reflexive} @{lteAddLeft n} tgt t
+        _   # t := copy r 0 0 n @{reflexive} @{?baz} tgt t
      in tgt # t
 
 --------------------------------------------------------------------------------
@@ -214,8 +215,8 @@ parameters {m, n : Nat}
   mappend : F1 s (MArray s (m+n) a)
   mappend t =
     let tgt # t := unsafeMArray1 (m+n) t
-        _   # t := copy p 0 0 m @{reflexive} @{lteAddLeft m} tgt t
-        _   # t := copy q 0 m n @{reflexive} @{lteAddLeft (m+n)} tgt t
+        _   # t := copy p 0 0 m @{reflexive} @{lteAddRight m} tgt t
+        _   # t := copy q 0 m n @{reflexive} @{?bar} tgt t
       in tgt # t
 
 --------------------------------------------------------------------------------
