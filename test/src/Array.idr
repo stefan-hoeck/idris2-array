@@ -3,6 +3,7 @@ module Array
 import Control.Monad.Identity
 import Data.Array
 import Data.Array.Mutable
+import Data.Linear.Token
 import Data.List
 import Data.List.Quantifiers
 import Data.SnocList
@@ -142,6 +143,18 @@ prop_append : Property
 prop_append = property $ do
   [x,y] <- forAll $ hlist [arrBits,arrBits]
   toList (x <+> y) === (toList x ++ toList y)
+
+prop_mappend : Property
+prop_mappend = property $ do
+  x <- forAll arrBits
+  y <- forAll arrBits
+  z <- run1 $ \t =>
+         let x' # t := thaw x.arr t
+             y' # t := thaw y.arr t
+             r  # t := mappend x' y' t
+             z  # t := freeze r t
+           in z # t
+  (append x.arr y.arr) === z
 
 prop_semigroup_assoc : Property
 prop_semigroup_assoc = property $ do
