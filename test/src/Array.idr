@@ -148,13 +148,12 @@ prop_mappend : Property
 prop_mappend = property $ do
   x <- forAll arrBits
   y <- forAll arrBits
-  z <- run1 $ \t =>
-         let x' # t := thaw x.arr t
-             y' # t := thaw y.arr t
-             r  # t := mappend x' y' t
-             z  # t := freeze r t
-           in z # t
-  (append x.arr y.arr) === z
+  ( run1 $ \t =>
+     let x' # t := thaw x.arr t
+         y' # t := thaw y.arr t
+         r  # t := mappend x' y' t
+         z  # t := freeze r t
+       in z # t ) === (append x.arr y.arr)
 
 prop_semigroup_assoc : Property
 prop_semigroup_assoc = property $ do
@@ -230,6 +229,7 @@ props = MkGroup "Array"
   , ("prop_foldlKV", prop_foldlKV)
   , ("prop_traverse_id", prop_traverse_id)
   , ("prop_append", prop_append)
+  , ("prop_mappend", prop_mappend)
   , ("prop_semigroup_assoc", prop_semigroup_assoc)
   , ("prop_monoid_left_neutral", prop_monoid_left_neutral)
   , ("prop_monoid_right_neutral", prop_monoid_right_neutral)
