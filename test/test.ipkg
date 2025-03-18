@@ -12,4 +12,3 @@ sourcedir  = "src"
 
 depends    = array
            , hedgehog
-           , ref1

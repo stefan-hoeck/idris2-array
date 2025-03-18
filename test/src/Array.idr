@@ -3,7 +3,6 @@ module Array
 import Control.Monad.Identity
 import Data.Array
 import Data.Array.Mutable
-import Data.Linear.Token
 import Data.List
 import Data.List.Quantifiers
 import Data.SnocList
