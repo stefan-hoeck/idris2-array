@@ -122,3 +122,18 @@ parameters (r : MBuffer s n)
   iterateFrom (S k) f v t =
     let _ # t := setIx r k v t
      in iterateFrom k f (f v) t
+
+--------------------------------------------------------------------------------
+--          Growing Buffers
+--------------------------------------------------------------------------------
+
+parameters {n : Nat}
+           (r : MBuffer s n)
+  ||| Allocates a new mutable buffer and adds the elements from `r`
+  ||| at its beginning.
+  export
+  mgrow : (m : Nat) -> F1 s (MBuffer s (m+n))
+  mgrow m t =
+    let tgt # t := mbuffer1 (m+n) t
+        _   # t := copy r 0 0 n @{reflexive} @{lteAddLeft n} tgt t
+     in tgt # t
