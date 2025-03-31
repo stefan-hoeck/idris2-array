@@ -5,11 +5,14 @@ import Data.Array.Core
 import Data.Buffer
 import Data.Buffer.Core
 import Data.Buffer.Indexed
+import Data.Buffer.Mutable
 import Data.SOP
 import Data.SnocList
 import Data.Vect
 import Hedgehog
 
+%hide Data.Array.Core.thaw
+%hide Data.Array.Core.freeze
 %default total
 
 bufferOf : (n : _) -> Gen Bits8 -> Gen (IBuffer n)
@@ -150,6 +153,24 @@ prop_buffer_roundtrip = property $ do
   x <- forAll (arr n)
   toIArray (toIBuffer x) === x
 
+prop_append : Property
+prop_append = property $ do
+  n <- forAll (nat $ linear 0 20)
+  [x,y] <- forAll $ np [buf n, buf n]
+  toList (append x y) === (toList x ++ toList y)
+
+prop_mappend : Property
+prop_mappend = property $ do
+  n <- forAll (nat $ linear 0 20)
+  x <- forAll (buf n)
+  y <- forAll (buf n)
+  ( run1 $ \t =>
+     let x' # t := thaw x t
+         y' # t := thaw y t
+         r  # t := mappend x' y' t
+         z  # t := freeze r t
+       in z # t ) === (append x y)
+
 export
 props : Group
 props = MkGroup "Buffer"
@@ -174,5 +195,7 @@ props = MkGroup "Buffer"
   , ("prop_traverse_id", prop_traverse_id)
   , ("prop_array_roundtrip", prop_array_roundtrip)
   , ("prop_buffer_roundtrip", prop_buffer_roundtrip)
+  , ("prop_append", prop_append)
+  , ("prop_mappend", prop_mappend)
   ]
 
