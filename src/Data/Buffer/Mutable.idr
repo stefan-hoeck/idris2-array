@@ -137,3 +137,21 @@ parameters {n : Nat}
     let tgt # t := mbuffer1 (m+n) t
         _   # t := copy r 0 0 n @{reflexive} @{lteAddLeft n} tgt t
      in tgt # t
+
+--------------------------------------------------------------------------------
+--          Appending Buffers
+--------------------------------------------------------------------------------
+
+parameters {m, n : Nat}
+           (p : MBuffer s m)
+           (q : MBuffer s n)
+
+  ||| Allocates a new mutable buffer and adds the elements from `p`
+  ||| at its beginning, followed by adding the elements from `q`.
+  export
+  mappend : F1 s (MBuffer s (m+n))
+  mappend t =
+    let tgt # t := mbuffer1 (m+n) t
+        _   # t := copy p 0 0 m @{reflexive} @{lteAddRight m} tgt t
+        _   # t := copy q 0 m n @{reflexive} tgt t
+      in tgt # t
