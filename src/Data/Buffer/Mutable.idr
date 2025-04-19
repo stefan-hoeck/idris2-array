@@ -18,6 +18,16 @@ export %inline
 setAtSuffix : MBuffer s (length ys) -> Suffix (x::xs) ys -> Bits8 -> F1' s
 setAtSuffix r v = set r (suffixToFin v)
 
+||| Safely access a value at the given byte position.
+export %inline
+setBits8 : MBuffer s 256 -> Bits8 -> Bits8 -> F1' s
+setBits8 r x = set r (bits8ToFin x)
+
+||| Safely access a value at the given byte position.
+export %inline
+getBits8 : MBuffer s 256 -> Bits8 -> F1 s Bits8
+getBits8 r x = get r (bits8ToFin x)
+
 parameters (r : MBuffer s n)
 
   ||| Set a value at index `n - m` in a mutable byte array.
