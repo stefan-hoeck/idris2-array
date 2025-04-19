@@ -35,6 +35,7 @@
 ||| example how this is used.
 module Data.Array.Index
 
+import Data.So
 import public Data.DPair
 import public Data.Fin
 import public Data.Nat
@@ -302,3 +303,19 @@ Reflexive Nat Ix where
 public export %inline
 Transitive Nat Ix where
   transitive = trans
+
+--------------------------------------------------------------------------------
+--          Fixed-precision integers
+--------------------------------------------------------------------------------
+
+export
+0 castBits8LT : (x : Bits8) -> LT (cast x) 256
+castBits8LT x =
+  case choose (cast {to = Nat} x < 256) of
+    Left oh => Data.Nat.ltOpReflectsLT _ _ oh
+    _       => assert_total $ idris_crash "Bits8 value >= 256"
+
+||| Every `Bits8` value can be safely cast to a `Fin 256`.
+export %inline
+bits8ToFin : Bits8 -> Fin 256
+bits8ToFin x = natToFinLT (cast x) @{castBits8LT x}

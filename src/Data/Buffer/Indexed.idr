@@ -23,6 +23,11 @@ export %inline
 atNat : IBuffer n -> (m : Nat) -> {auto 0 lt : LT m n} -> Bits8
 atNat arr x = at arr (natToFinLT x)
 
+||| Safely access a value at the given byte position.
+export %inline
+atByte : IBuffer 256 -> Bits8 -> Bits8
+atByte arr x = at arr (bits8ToFin x)
+
 --------------------------------------------------------------------------------
 --          Initializing Arrays
 --------------------------------------------------------------------------------

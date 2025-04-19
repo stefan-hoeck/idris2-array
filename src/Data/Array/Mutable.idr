@@ -25,6 +25,16 @@ setAtSuffix :
   -> F1' s
 setAtSuffix r v = set r (suffixToFin v)
 
+||| Safely access a value at the given byte position.
+export %inline
+setBits8 : MArray s 256 a -> Bits8 -> a -> F1' s
+setBits8 r x = set r (bits8ToFin x)
+
+||| Safely access a value at the given byte position.
+export %inline
+getBits8 : MArray s 256 a -> Bits8 -> F1 s a
+getBits8 r x = get r (bits8ToFin x)
+
 parameters (r : MArray s n a)
 
   ||| Set a value at index `n - m` in a mutable array.
