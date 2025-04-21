@@ -251,7 +251,9 @@ parameters {m, n : Nat}
          -> {auto 0 prf' : LTE curm $ ixToNat v}
          -> (m ** MArray s m a)
       go curn curm 0     r s t =
+        s # t
       go curn curm (S j) r s t =
+        
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
