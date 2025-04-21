@@ -237,8 +237,8 @@ parameters {m, n : Nat}
 
   ||| Filters the values in a MArray according to the given predicate.
   export
-  mfilter : (m ** MArray s m a)
-  mfilter t =
+  mfilter : (a -> Bool) -> (m ** MArray s m a)
+  mfilter f t =
     let tft  # t := unsafeMArray1 n t
         tft' # t := go 0 0 n r tft t
       in tft' # t
