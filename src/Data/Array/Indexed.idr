@@ -310,7 +310,7 @@ export
 drop : {n : _} -> (m : Nat) -> IArray n a -> IArray (n `minus` m) a
 drop m arr = generate (n `minus` m) (\f => at arr (inc f))
 
-||| Filter the values in a graph together with their corresponding
+||| Filter the values in an IArray together with their corresponding
 ||| indices according to the given predicate.
 export
 filterWithKey :
@@ -336,7 +336,7 @@ filterWithKey f arr = unsafeAlloc n (go 0 n)
           go (S cur) j r
         False => go cur j r
 
-||| Filters the values in a graph according to the given predicate.
+||| Filters the values in an IArray according to the given predicate.
 export %inline
 filter : {n : Nat} -> (a -> Bool) -> IArray n a -> Array a
 filter = filterWithKey . const

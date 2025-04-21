@@ -232,18 +232,26 @@ parameters {m, n : Nat}
 --          Subarrays
 --------------------------------------------------------------------------------
 
-parameters {n : Nat}
+parameters {m, n : Nat}
            (r : MArray s n a)
 
+  ||| Filters the values in a MArray according to the given predicate.
   export
-  mfilter :
+  mfilter : (m ** MArray s m a)
   mfilter t =
     let tft  # t := unsafeMArray1 n t
-        tft' # t := go r tft 0 n t
+        tft' # t := go 0 0 n r tft t
       in tft' # t
     where
-      go :
-      go =
+      go :  (curn, curm, x : Nat)
+         -> (r : MArray s n a)
+         -> (s : MArray s m a)
+         -> {auto v : Ix x n}
+         -> {auto 0 prf : LTE curn $ ixToNat v}
+         -> {auto 0 prf' : LTE curm $ ixToNat v}
+         -> (m ** MArray s m a)
+      go curn curm 0     r s t =
+      go curn curm (S j) r s t =
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
