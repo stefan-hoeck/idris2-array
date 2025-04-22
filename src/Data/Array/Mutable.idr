@@ -233,34 +233,36 @@ parameters {m, n : Nat}
 --------------------------------------------------------------------------------
 
 parameters {m, n : Nat}
+           (f : a -> Bool)
            (r : MArray s n a)
 
   ||| Filters the values in a MArray according to the given predicate.
   export
-  mfilter : (a -> Bool) -> (m ** MArray s m a)
-  mfilter f t =
-    let tft          # t := unsafeMArray1 n t
-        tft'         # t := go 0 0 n r tft t
-        (m ** tft'') # t := mtake tft' m t
+  mfilter : F1 s (MArray s m a)
+  mfilter t =
+    let tft        # t := unsafeMArray1 n t
+        tft'       # t := go 0 n r tft t
+        (m, tft'') # t := mtake tft' m t
       in (m ** tft'') # t
     where
-      go :  (curn, curm, x : Nat)
+      go :  (m, x : Nat)
          -> (r : MArray s n a)
-         -> (s : MArray s m a)
-         -> {auto v : Ix x n}
-         -> {auto 0 prf : LTE curn $ ixToNat v}
-         -> {auto 0 prf' : LTE curm $ ixToNat v}
-         -> (m ** MArray s m a)
-      go curn curm 0     r s t =
-        s # t
-      go curn curm (S j) r s t =
+         -> (s : MArray s n a)
+         -> F1 s (m, (MArray s n a))
+      go m 0     r s t =
+        (m, s) # t
+      go m (S j) r s t =
         case tryNatToFin j of
-        let curr # t := get r t
-
-        case f (ixToFin v) (ix arr j) of
-          True  =>
-            
-          False =>
+          Nothing =>
+            go m j r s t
+          Just j' =>
+            let j'' # t := get r j' t
+              in case f j'' of
+                   True  =>
+                     let () # t := set s m j'' t
+                       in go (S m) j r s t
+                   False =>
+                     go m j r s t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
