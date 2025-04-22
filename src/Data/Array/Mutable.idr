@@ -239,9 +239,10 @@ parameters {m, n : Nat}
   export
   mfilter : (a -> Bool) -> (m ** MArray s m a)
   mfilter f t =
-    let tft  # t := unsafeMArray1 n t
-        tft' # t := go 0 0 n r tft t
-      in tft' # t
+    let tft          # t := unsafeMArray1 n t
+        tft'         # t := go 0 0 n r tft t
+        (m ** tft'') # t := mtake tft' m t
+      in (m ** tft'') # t
     where
       go :  (curn, curm, x : Nat)
          -> (r : MArray s n a)
