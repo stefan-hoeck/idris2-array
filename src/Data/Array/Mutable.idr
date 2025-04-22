@@ -247,9 +247,8 @@ parameters {m, n : Nat}
   export
   mfilter : F1 s (m ** MArray s m a)
   mfilter t =
-    let tft         # t := unsafeMArray1 n t
-        (m ** tft') # t := go 0 n tft t
-      in (m ** tft') # t
+    let tft # t := unsafeMArray1 n t
+      in go 0 n tft t
     where
       go :  (m, x : Nat)
          -> (q : MArray s n a)
