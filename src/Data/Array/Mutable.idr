@@ -240,7 +240,7 @@ curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
 parameters {m, n : Nat}
            {auto 0 _ : LTE m n}
-           (f : Fin n -> a -> Bool)
+           (f : a -> Bool)
            (p : MArray s n a)
 
   ||| Filters the values in a mutable array according to the given predicate.
@@ -261,7 +261,7 @@ parameters {m, n : Nat}
           in (m ** q') # t
       go m (S j) q t =
         let j' # t := getIx p j t
-          in case f (ixToFin v) j' of
+          in case f j' of
                True  =>
                  let () # t := setNat q m @{curLT v prf} j' t
                    in go (S m) j q t
