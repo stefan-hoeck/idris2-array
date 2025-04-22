@@ -232,7 +232,7 @@ parameters {m, n : Nat}
 --          Subarrays
 --------------------------------------------------------------------------------
 
-parameters {m, n : Nat}
+parameters {n : Nat}
            (f : a -> Bool)
            (p : MArray s n a)
 
@@ -247,27 +247,22 @@ parameters {m, n : Nat}
       go :  (m, x : Nat)
          -> (p : MArray s n a)
          -> (q : MArray s n a)
+         -> (f : Fin n -> a -> Bool)
+         -> {auto v : Ix x n}
+         -> {auto 0 prf : LTE m $ ixToNat v}
          -> {auto 0 _ : LTE m n}
-         -> F1 s (m : Nat ** MArray s m a)
+         -> F1 s (m ** MArray s m a)
       go m 0     p q t =
         let q' # t := mtake q m t
           in (m ** q') # t
       go m (S j) p q t =
-        case tryNatToFin j of
-          Nothing =>
-            go m j p q t
-          Just j' =>
-            let j'' # t := get p j' t
-              in case f j'' of
-                   True  =>
-                     case tryNatToFin m of
-                       Nothing =>
-                         go m j p q t
-                       Just m' =>
-                         let () # t := set q m' j'' t
-                           in go (S m) j p q t
-                   False =>
-                     go m j p q t
+        let j' # t := getIx p j t
+          in case f (ixToFin v) j' of
+               True  =>
+                 let () # t := setNat q m j' t
+                   in go (S m) j p q t
+               False =>
+                 go m j p q t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
