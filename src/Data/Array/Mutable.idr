@@ -254,16 +254,22 @@ parameters {m, n : Nat}
       go curn curm 0     r s t =
         s # t
       go curn curm (S j) r s t =
-        
+        case tryNatToFin j of
+        let curr # t := get r t
+
+        case f (ixToFin v) (ix arr j) of
+          True  =>
+            
+          False =>
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
 --------------------------------------------------------------------------------
 
-parameters {k    : Nat}
-           (r    : MArray s k a)
+parameters {k : Nat}
+           (r : MArray s k a)
 
-  ||| Accumulate the values stored in a mutable, linear array.
+  ||| Accumulate the values stored in a mutable array.
   export
   foldrLin : (a -> b -> b) -> b -> F1 s b
   foldrLin f = go k
@@ -274,7 +280,7 @@ parameters {k    : Nat}
         el <- getNat r k
         go k (f el v)
 
-  ||| Store the values in a linear array in a `Vect` of the same size.
+  ||| Store the values in a mutable array in a `Vect` of the same size.
   export
   toVect : F1 s (Vect k a)
   toVect = go [] k
@@ -285,7 +291,7 @@ parameters {k    : Nat}
         let v # t := getNat r x t
          in rewrite sym (plusSuccRightSucc m x) in go (v::vs) x t
 
-  ||| Extract and convert the values stored in a linear array
+  ||| Extract and convert the values stored in a mutable array
   ||| and store them in a `Vect` of the same size.
   export
   toVectWith : (Fin k -> a -> b) -> F1 s (Vect k b)
