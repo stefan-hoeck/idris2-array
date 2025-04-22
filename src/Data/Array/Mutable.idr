@@ -233,6 +233,7 @@ parameters {m, n : Nat}
 --------------------------------------------------------------------------------
 
 parameters {m, n : Nat}
+           {auto 0 lte : LTE m n}
            (f : a -> Bool)
            (p : MArray s n a)
 
