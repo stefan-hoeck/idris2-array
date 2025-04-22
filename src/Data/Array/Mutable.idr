@@ -242,12 +242,12 @@ parameters {m, n : Nat}
 
   ||| Filters the values in a mutable array according to the given predicate.
   export
-  mfilter : F1 s (MArray s m a)
+  mfilter : F1 s (m ** MArray s m a)
   mfilter t =
     let tft       # t := unsafeMArray1 n t
         (m, tft') # t := go 0 n p tft t
         tft''     # t := mtake tft' m t
-      in tft'' # t
+      in (m ** tft'') # t
     where
       go :  (m, x : Nat)
          -> (p : MArray s n a)
