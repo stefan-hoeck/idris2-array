@@ -232,6 +232,9 @@ parameters {m, n : Nat}
 --          Subarrays
 --------------------------------------------------------------------------------
 
+0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
+curLTE s lte = transitive lte $ ixLTE s
+
 0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
@@ -244,19 +247,19 @@ parameters {m, n : Nat}
   export
   mfilter : F1 s (m ** MArray s m a)
   mfilter t =
-    let tft       # t := unsafeMArray1 n t
-        (m, tft') # t := go 0 n p tft t
-        tft''     # t := mtake tft' m t
-      in (m ** tft'') # t
+    let tft         # t := unsafeMArray1 n t
+        (m ** tft') # t := go 0 n p tft t
+      in (m ** tft') # t
     where
       go :  (m, x : Nat)
          -> (p : MArray s n a)
          -> (q : MArray s n a)
          -> {auto v : Ix x n}
          -> {auto 0 prf : LTE m $ ixToNat v}
-         -> F1 s (Nat, MArray s n a)
+         -> F1 s (m ** MArray s m a)
       go m Z     p q t =
-        (m, q) # t
+        let q' # t := mtake q m @{curLTE v prf} t
+          in (m ** q') # t
       go m (S j) p q t =
         let j' # t := getIx p j t
           in case f (ixToFin v) j' of
