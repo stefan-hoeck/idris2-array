@@ -248,26 +248,25 @@ parameters {m, n : Nat}
   mfilter : F1 s (m ** MArray s m a)
   mfilter t =
     let tft         # t := unsafeMArray1 n t
-        (m ** tft') # t := go 0 n p tft t
+        (m ** tft') # t := go 0 n tft t
       in (m ** tft') # t
     where
       go :  (m, x : Nat)
-         -> (p : MArray s n a)
          -> (q : MArray s n a)
          -> {auto v : Ix x n}
          -> {auto 0 prf : LTE m $ ixToNat v}
          -> F1 s (m ** MArray s m a)
-      go m Z     p q t =
+      go m Z     q t =
         let q' # t := mtake q m @{curLTE v prf} t
           in (m ** q') # t
-      go m (S j) p q t =
+      go m (S j) q t =
         let j' # t := getIx p j t
           in case f (ixToFin v) j' of
                True  =>
                  let () # t := setNat q m @{curLT v prf} j' t
-                   in go (S m) j p q t
+                   in go (S m) j q t
                False =>
-                 go m j p q t
+                 go m j q t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
