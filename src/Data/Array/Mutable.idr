@@ -233,7 +233,6 @@ parameters {m, n : Nat}
 --------------------------------------------------------------------------------
 
 parameters {m, n : Nat}
-           {auto 0 lte : LTE m n}
            (f : a -> Bool)
            (p : MArray s n a)
 
@@ -243,15 +242,16 @@ parameters {m, n : Nat}
   mfilter t =
     let tft         # t := unsafeMArray1 n t
         (m ** tft') # t := go 0 n p tft t
-        tft''       # t := mtake tft' m t
-      in (m ** tft'') # t
+      in (m ** tft') # t
     where
       go :  (m, x : Nat)
          -> (p : MArray s n a)
          -> (q : MArray s n a)
-         -> F1 s (m : Nat ** MArray s n a)
+         -> {auto 0 _ : LTE m n}
+         -> F1 s (m : Nat ** MArray s m a)
       go m 0     p q t =
-        (m ** q) # t
+        let q' # t := mtake q m t
+          in (m ** q') # t
       go m (S j) p q t =
         case tryNatToFin j of
           Nothing =>
