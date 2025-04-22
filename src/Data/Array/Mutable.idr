@@ -236,7 +236,7 @@ parameters {m, n : Nat}
            (f : a -> Bool)
            (r : MArray s n a)
 
-  ||| Filters the values in a MArray according to the given predicate.
+  ||| Filters the values in a mutable array according to the given predicate.
   export
   mfilter : F1 s (MArray s m a)
   mfilter t =
