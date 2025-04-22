@@ -232,17 +232,22 @@ parameters {m, n : Nat}
 --          Subarrays
 --------------------------------------------------------------------------------
 
-parameters {n : Nat}
-           (f : a -> Bool)
+0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
+curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
+
+parameters {m, n : Nat}
+           {auto 0 _ : LTE m n}
+           (f : Fin n -> a -> Bool)
            (p : MArray s n a)
 
   ||| Filters the values in a mutable array according to the given predicate.
   export
-  mfilter : F1 s (m ** MArray s m a)
+  mfilter : F1 s (MArray s m a)
   mfilter t =
-    let tft         # t := unsafeMArray1 n t
-        (m ** tft') # t := go 0 n p tft t
-      in (m ** tft') # t
+    let tft       # t := unsafeMArray1 n t
+        (m, tft') # t := go 0 n p tft f t
+        tft''     # t := mtake tft' m t
+      in tft'' # t
     where
       go :  (m, x : Nat)
          -> (p : MArray s n a)
@@ -250,19 +255,17 @@ parameters {n : Nat}
          -> (f : Fin n -> a -> Bool)
          -> {auto v : Ix x n}
          -> {auto 0 prf : LTE m $ ixToNat v}
-         -> {auto 0 _ : LTE m n}
-         -> F1 s (m ** MArray s m a)
-      go m 0     p q t =
-        let q' # t := mtake q m t
-          in (m ** q') # t
-      go m (S j) p q t =
+         -> F1 s (Nat, MArray s n a)
+      go m Z     p q f t =
+        (m, q) # t
+      go m (S j) p q f t =
         let j' # t := getIx p j t
           in case f (ixToFin v) j' of
                True  =>
-                 let () # t := setNat q m j' t
-                   in go (S m) j p q t
+                 let () # t := setNat q m @{curLT v prf} j' t
+                   in go (S m) j p q f t
                False =>
-                 go m j p q t
+                 go m j p q f t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
