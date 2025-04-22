@@ -234,35 +234,35 @@ parameters {m, n : Nat}
 
 parameters {m, n : Nat}
            (f : a -> Bool)
-           (r : MArray s n a)
+           (p : MArray s n a)
 
   ||| Filters the values in a mutable array according to the given predicate.
   export
   mfilter : F1 s (MArray s m a)
   mfilter t =
-    let tft        # t := unsafeMArray1 n t
-        tft'       # t := go 0 n r tft t
-        (m, tft'') # t := mtake tft' m t
+    let tft          # t := unsafeMArray1 n t
+        tft'         # t := go 0 n p tft t
+        (m ** tft'') # t := mtake tft' m t
       in (m ** tft'') # t
     where
       go :  (m, x : Nat)
-         -> (r : MArray s n a)
-         -> (s : MArray s n a)
-         -> F1 s (m, (MArray s n a))
-      go m 0     r s t =
-        (m, s) # t
-      go m (S j) r s t =
+         -> (p : MArray s n a)
+         -> (q : MArray s n a)
+         -> F1 s (m ** (MArray s n a))
+      go m 0     p q t =
+        (m ** q) # t
+      go m (S j) p q t =
         case tryNatToFin j of
           Nothing =>
-            go m j r s t
+            go m j p q t
           Just j' =>
-            let j'' # t := get r j' t
+            let j'' # t := get p j' t
               in case f j'' of
                    True  =>
-                     let () # t := set s m j'' t
-                       in go (S m) j r s t
+                     let () # t := set q m j'' t
+                       in go (S m) j p q t
                    False =>
-                     go m j r s t
+                     go m j p q t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
