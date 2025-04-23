@@ -15,7 +15,7 @@ import Syntax.T1
 --          Reading and writing mutable arrays
 --------------------------------------------------------------------------------
 
-||| Set a value in an array corresponding to a position in a list
+||| Set a value in a mutable array corresponding to a position in a list
 ||| used for filling said array.
 export %inline
 setAtSuffix :
@@ -229,13 +229,51 @@ parameters {m, n : Nat}
       in tgt # t
 
 --------------------------------------------------------------------------------
+--          Subarrays
+--------------------------------------------------------------------------------
+
+0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
+curLTE s lte = transitive lte $ ixLTE s
+
+0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
+curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
+
+parameters {n : Nat}
+           (f : a -> Bool)
+           (p : MArray s n a)
+
+  ||| Filters the values in a mutable array according to the given predicate.
+  export
+  mfilter : F1 s (m ** MArray s m a)
+  mfilter t =
+    let tft # t := unsafeMArray1 n t
+      in go 0 n tft t
+    where
+      go :  (m, x : Nat)
+         -> (q : MArray s n a)
+         -> {auto v : Ix x n}
+         -> {auto 0 prf : LTE m $ ixToNat v}
+         -> F1 s (m ** MArray s m a)
+      go m Z     q t =
+        let q' # t := mtake q m @{curLTE v prf} t
+          in (m ** q') # t
+      go m (S j) q t =
+        let j' # t := getIx p j t
+          in case f j' of
+               True  =>
+                 let () # t := setNat q m @{curLT v prf} j' t
+                   in go (S m) j q t
+               False =>
+                 go m j q t
+
+--------------------------------------------------------------------------------
 --          Linear Utilities
 --------------------------------------------------------------------------------
 
-parameters {k    : Nat}
-           (r    : MArray s k a)
+parameters {k : Nat}
+           (r : MArray s k a)
 
-  ||| Accumulate the values stored in a mutable, linear array.
+  ||| Accumulate the values stored in a mutable array.
   export
   foldrLin : (a -> b -> b) -> b -> F1 s b
   foldrLin f = go k
@@ -246,7 +284,7 @@ parameters {k    : Nat}
         el <- getNat r k
         go k (f el v)
 
-  ||| Store the values in a linear array in a `Vect` of the same size.
+  ||| Store the values in a mutable array in a `Vect` of the same size.
   export
   toVect : F1 s (Vect k a)
   toVect = go [] k
@@ -257,7 +295,7 @@ parameters {k    : Nat}
         let v # t := getNat r x t
          in rewrite sym (plusSuccRightSucc m x) in go (v::vs) x t
 
-  ||| Extract and convert the values stored in a linear array
+  ||| Extract and convert the values stored in a mutable array
   ||| and store them in a `Vect` of the same size.
   export
   toVectWith : (Fin k -> a -> b) -> F1 s (Vect k b)

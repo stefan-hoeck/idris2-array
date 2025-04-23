@@ -115,6 +115,16 @@ prop_filter = property $ do
   vs <- forAll arrBits
   toList (filter (< 10) vs) === filter (< 10) (toList vs)
 
+prop_mfilter : Property
+prop_mfilter = property $ do
+  x <- forAll arrBits
+  let x' = filter (< 10) x.arr
+  ( run1 $ \t =>
+     let x''          # t := thaw x.arr t
+         (rsize ** r) # t := mfilter (< 10) x'' t
+         z            # t := freeze r t
+       in A rsize z # t ) === x'
+
 foo : Bits8 -> Maybe String
 foo v = if v < 10 then Just (show v) else Nothing
 
@@ -223,6 +233,7 @@ props = MkGroup "Array"
   , ("prop_generate", prop_generate)
   , ("prop_iterate", prop_iterate)
   , ("prop_filter", prop_filter)
+  , ("prop_mfilter", prop_mfilter)
   , ("prop_mapMaybe", prop_mapMaybe)
   , ("prop_foldrKV", prop_foldrKV)
   , ("prop_foldlKV", prop_foldlKV)
