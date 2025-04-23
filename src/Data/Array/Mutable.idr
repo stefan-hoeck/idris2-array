@@ -238,8 +238,7 @@ curLTE s lte = transitive lte $ ixLTE s
 0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
-parameters {m, n : Nat}
-           {auto 0 _ : LTE m n}
+parameters {n : Nat}
            (f : a -> Bool)
            (p : MArray s n a)
 
