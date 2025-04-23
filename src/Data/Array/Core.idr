@@ -113,7 +113,7 @@ export
 data MArray : (s : Type) -> (n : Nat) -> (a : Type) -> Type where
   MA : (arr : AnyPtr) -> MArray s n a
 
-||| Convenience alias for `MArray' RIO`
+||| Convenience alias for `MArray' RIO`.
 public export
 0 IOArray : Nat -> Type -> Type
 IOArray = MArray World
@@ -128,7 +128,7 @@ marray1 : (n : Nat) -> a -> F1 s (MArray s n a)
 marray1 n v t =
   let p # t := ffi (prim__newArray (cast n) (believe_me v)) t in MA p # t
 
-||| Fills a new mutable array in `IO`
+||| Fills a new mutable array in `IO`.
 export %inline
 marray : Lift1 s f => (n : Nat) -> a -> f (MArray s n a)
 marray n v = lift1 (marray1 n v)
@@ -138,7 +138,7 @@ unsafeMArray1 : (n : Nat) -> F1 s (MArray s n a)
 unsafeMArray1 n t =
   let p # t := ffi (prim__emptyArray (cast n)) t in MA p # t
 
-||| Allocates a new, empty, mutable array in `IO`
+||| Allocates a new, empty, mutable array in `IO`.
 export %inline
 unsafeMArray : Lift1 s f => (n : Nat) -> f (MArray s n a)
 unsafeMArray n = lift1 (unsafeMArray1 n)
@@ -281,7 +281,7 @@ icopyToArray :
   -> F1' s
 icopyToArray buf = copyToArray {m} (unsafeMBuffer $ unsafeGetBuffer buf)
 
-||| Copy the content of an immutable array to a new array.
+||| Copy the content of an immutable array to a new mutable array.
 export
 thaw : {n : _} -> IArray n a -> F1 s (MArray s n a)
 thaw src t =
@@ -364,7 +364,7 @@ freeze src = freezeLTE src n @{reflexive}
 --          Array Conversions
 --------------------------------------------------------------------------------
 
-||| Copies an array of bytes to a buffer
+||| Copies an immutable array of bytes to a immutable buffer.
 export
 toIBuffer : {n : _} -> IArray n Bits8 -> IBuffer n
 toIBuffer arr =
@@ -372,7 +372,7 @@ toIBuffer arr =
    let _ # t := icopyToBuf arr 0 0 n buf t
     in unsafeFreeze buf t
 
-||| Copies a buffer to an array of bytes
+||| Copies an immtuable buffer to an immutable array of bytes.
 export
 toIArray : {n : _} -> IBuffer n -> IArray n Bits8
 toIArray buf =
