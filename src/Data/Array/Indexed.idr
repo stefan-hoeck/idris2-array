@@ -107,7 +107,7 @@ fromPairs n v ps = alloc n v (go ps)
 --          Eq and Ord
 --------------------------------------------------------------------------------
 
-||| Lexicographic comparison of Arrays of distinct length
+||| Lexicographic comparison of arrays of distinct length
 export
 hcomp : {m,n : Nat} -> Ord a => IArray m a -> IArray n a -> Ordering
 hcomp a1 a2 = go m n
@@ -121,7 +121,7 @@ hcomp a1 a2 = go m n
       EQ => go k j
       r  => r
 
-||| Heterogeneous equality for Arrays
+||| Heterogeneous equality for arrays
 export
 heq : {m,n : Nat} -> Eq a => IArray m a -> IArray n a -> Bool
 heq a1 a2 = go m n
@@ -270,7 +270,7 @@ updateAt x f = mapWithIndex (\k,v => if x == k then f v else v)
 
 ||| Set a single position in an array.
 |||
-||| This will have to copy the whol array, so it runs in O(n).
+||| This will have to copy the whole array, so it runs in O(n).
 export
 setAt : {n : _} -> Fin n -> a -> IArray n a -> IArray n a
 setAt x y = mapWithIndex (\k,v => if x == k then y else v)
@@ -279,7 +279,7 @@ setAt x y = mapWithIndex (\k,v => if x == k then y else v)
 --          Traversals
 --------------------------------------------------------------------------------
 
-||| Effectful traversal of the values in a graph together with
+||| Effectful traversal of the values in an array together with
 ||| their corresponding indices.
 export
 traverseWithIndex :
@@ -305,12 +305,12 @@ curLTE s lte = transitive lte $ ixLTE s
 0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
-||| We can drop n elements from an array. O(n)
+||| Drop n elements from an array. O(n)
 export
 drop : {n : _} -> (m : Nat) -> IArray n a -> IArray (n `minus` m) a
 drop m arr = generate (n `minus` m) (\f => at arr (inc f))
 
-||| Filter the values in an IArray together with their corresponding
+||| Filter the values in an immutable array together with their corresponding
 ||| indices according to the given predicate.
 export
 filterWithKey :
@@ -336,12 +336,12 @@ filterWithKey f arr = unsafeAlloc n (go 0 n)
           go (S cur) j r
         False => go cur j r
 
-||| Filters the values in an IArray according to the given predicate.
+||| Filters the values in an immutable array according to the given predicate.
 export %inline
 filter : {n : Nat} -> (a -> Bool) -> IArray n a -> Array a
 filter = filterWithKey . const
 
-||| Map the values in a graph together with their corresponding indices
+||| Map the values in an immutable array together with their corresponding indices
 ||| over a function that might not return a result for all values.
 export
 mapMaybeWithKey :
@@ -367,7 +367,7 @@ mapMaybeWithKey f arr = unsafeAlloc n (go 0 n)
           go (S cur) j r
         Nothing => go cur j r
 
-||| Map the values in a graph together with their corresponding indices
+||| Map the values in an immutable array together with their corresponding indices
 ||| over a function that might not return a result for all values.
 export %inline
 mapMaybe : {n : Nat} -> (a -> Maybe b) -> IArray n a -> Array b
