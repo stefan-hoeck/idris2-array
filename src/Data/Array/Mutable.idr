@@ -15,7 +15,7 @@ import Syntax.T1
 --          Reading and writing mutable arrays
 --------------------------------------------------------------------------------
 
-||| Set a value in an array corresponding to a position in a list
+||| Set a value in a mutable array corresponding to a position in a list
 ||| used for filling said array.
 export %inline
 setAtSuffix :
