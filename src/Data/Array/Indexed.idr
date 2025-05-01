@@ -31,11 +31,6 @@ export %inline
 atNat : IArray n a -> (m : Nat) -> {auto 0 lt : LT m n} -> a
 atNat arr x = at arr (natToFinLT x)
 
-||| Safely access a value at the given byte position.
-export %inline
-atByte : IArray 256 a -> Bits8 -> a
-atByte arr x = at arr (bits8ToFin x)
-
 --------------------------------------------------------------------------------
 --          Initializing Arrays
 --------------------------------------------------------------------------------
