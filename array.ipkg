@@ -13,6 +13,9 @@ modules    = Data.Array.Core
            , Data.Array.Mutable
            , Data.Array
 
+           , Data.FXArray.Core
+           , Data.FXArray.Mutable
+
            , Data.Buffer.Core
            , Data.Buffer.Indexed
            , Data.Buffer.Mutable
