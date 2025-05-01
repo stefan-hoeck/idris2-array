@@ -87,6 +87,11 @@ export %inline
 at : IArray n a -> Fin n -> a
 at (IA ad) m = believe_me $ prim__arrayGet ad (cast $ finToNat m)
 
+||| Safely use a byte as an index into an array.
+export %inline
+atByte : IArray 256 a -> Bits8 -> a
+atByte (IA ad) m = believe_me $ prim__arrayGet ad (cast m)
+
 ||| Safely access a value in an array at the given position
 ||| and offset.
 export %inline
@@ -148,6 +153,11 @@ export %inline
 set : (r : MArray s n a) -> Fin n -> a -> F1' s
 set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) (believe_me v))
 
+||| Safely write a value to a mutable array.
+export %inline
+setBits8 : (r : MArray s 256 a) -> Bits8 -> a -> F1' s
+setBits8 (MA arr) ix v = ffi (prim__arraySet arr (cast ix) (believe_me v))
+
 ||| Safely read a value from a mutable array.
 |||
 ||| This returns the values thus read with unrestricted quantity, paired
@@ -156,6 +166,15 @@ set (MA arr) ix v = ffi (prim__arraySet arr (cast $ finToNat ix) (believe_me v))
 export %inline
 get : (r : MArray s n a) -> Fin n -> F1 s a
 get (MA arr) ix t = believe_me (prim__arrayGet arr (cast $ finToNat ix)) # t
+
+||| Safely read a value from a mutable array.
+|||
+||| This returns the values thus read with unrestricted quantity, paired
+||| with a new linear token of quantity one to be further used in the
+||| linear context.
+export %inline
+getBits8 : (r : MArray s 256 a) -> Bits8 -> F1 s a
+getBits8 (MA arr) ix t = believe_me (prim__arrayGet arr (cast ix)) # t
 
 ||| Safely modify a value in a mutable array.
 export %inline
