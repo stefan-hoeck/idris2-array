@@ -172,6 +172,11 @@ export %inline
 bufString : (r : MBuffer s n) -> (m : Nat) -> (0 lte : LTE m n) => F1 s String
 bufString (MB buf) m t = prim__getString buf 0 (cast m) # t
 
+||| Wraps a mutable buffer in a shorter one.
+export %inline
+mtake : MBuffer s n -> (0 m : Nat) -> (0 lte : LTE m n) => F1 s (MBuffer s m)
+mtake (MB buf) _ t = MB buf # t
+
 --------------------------------------------------------------------------------
 -- Allocating Byte Vectors
 --------------------------------------------------------------------------------
