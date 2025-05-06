@@ -165,3 +165,41 @@ parameters {m, n : Nat}
         _   # t := copy p 0 0 m @{reflexive} @{lteAddRight m} tgt t
         _   # t := copy q 0 m n @{reflexive} tgt t
       in tgt # t
+
+--------------------------------------------------------------------------------
+--          Sub-Buffers
+--------------------------------------------------------------------------------
+
+0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
+curLTE s lte = transitive lte $ ixLTE s
+
+0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
+curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
+
+parameters {n : Nat}
+           (f : Bits8 -> Bool)
+           (p : MBuffer s n)
+
+  ||| Filters the values in a mutable buffer according to the given predicate.
+  export
+  mfilter : F1 s (m ** MBuffer s m)
+  mfilter t =
+    let tft # t := mbuffer1 n t
+      in go 0 n tft t
+    where
+      go :  (m, x : Nat)
+         -> (q : MBuffer s n)
+         -> {auto v : Ix x n}
+         -> {auto 0 prf : LTE m $ ixToNat v}
+         -> F1 s (m ** MBuffer s m)
+      go m Z     q t =
+        let q' # t := mtake q m @{curLTE v prf} t
+          in (m ** q') # t
+      go m (S j) q t =
+        let j' # t := getIx p j t
+          in case f j' of
+               True  =>
+                 let () # t := setNat q m @{curLT v prf} j' t
+                   in go (S m) j q t
+               False =>
+                 go m j q t
