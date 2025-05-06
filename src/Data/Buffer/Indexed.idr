@@ -13,12 +13,12 @@ import Syntax.PreorderReasoning
 --          Accessing Data
 --------------------------------------------------------------------------------
 
-||| Safely access a value in an array at position `n - m`.
+||| Safely access a value in an immutable byte array at position `n - m`.
 export %inline
 ix : IBuffer n -> (0 m : Nat) -> {auto x: Ix (S m) n} -> Bits8
 ix arr _ = at arr (ixToFin x)
 
-||| Safely access a value in an array at the given position.
+||| Safely access a value in an immutable byte array at the given position.
 export %inline
 atNat : IBuffer n -> (m : Nat) -> {auto 0 lt : LT m n} -> Bits8
 atNat arr x = at arr (natToFinLT x)
@@ -29,15 +29,15 @@ atByte : IBuffer 256 -> Bits8 -> Bits8
 atByte arr x = at arr (bits8ToFin x)
 
 --------------------------------------------------------------------------------
---          Initializing Arrays
+--          Initializing Byte Arrays
 --------------------------------------------------------------------------------
 
-||| The empty array.
+||| The empty byte array.
 export
 empty : IBuffer 0
 empty = alloc 0 unsafeFreeze
 
-||| Copy the values in a list to an array of the same length.
+||| Copy the values in a list to an immutable byte array of the same length.
 export %inline
 bufferL : (ls : List Bits8) -> IBuffer (length ls)
 bufferL xs =
@@ -45,7 +45,7 @@ bufferL xs =
     let _ # t := writeList {xs} r xs t
      in unsafeFreeze r t
 
-||| Copy the values in a vector to an array of the same length.
+||| Copy the values in a vector to an immutable byte array of the same length.
 export %inline
 buffer : {n : _} -> Vect n Bits8 -> IBuffer n
 buffer xs =
@@ -53,10 +53,10 @@ buffer xs =
     let _ # t := writeVect r xs t
      in unsafeFreeze r t
 
-||| Copy the values in a vector to an array of the same length
+||| Copy the values in a vector to an immutable byte array of the same length
 ||| in reverse order.
 |||
-||| This is useful the values in the array have been collected
+||| This is useful the values in the byte array have been collected
 ||| from tail to head for instance when parsing some data.
 export %inline
 revBuffer : {n : _} -> Vect n Bits8 -> IBuffer n
@@ -65,7 +65,7 @@ revBuffer xs =
     let _ # t := writeVectRev r n xs t
      in unsafeFreeze r t
 
-||| Generate an immutable array of the given size using
+||| Generate an immutable byte array of the given size using
 ||| the given iteration function.
 export %inline
 generate : (n : Nat) -> (Fin n -> Bits8) -> IBuffer n
@@ -74,12 +74,12 @@ generate n f =
     let _ # t := genFrom r n f t
      in unsafeFreeze r t
 
-||| Fill an immutable array of the given size with the given value
+||| Fill an immutable byte array of the given size with the given value.
 export %inline
 fill : (n : Nat) -> Bits8 -> IBuffer n
 fill n = generate n . const
 
-||| Generate an array of the given size by filling it with the
+||| Generate an immutable byte array of the given size by filling it with the
 ||| results of repeatedly applying `f` to the initial value.
 export %inline
 iterate : (n : Nat) -> (f : Bits8 -> Bits8) -> Bits8 -> IBuffer n
@@ -88,11 +88,11 @@ iterate n f v =
     let _ # t := iterateFrom r n f v t
      in unsafeFreeze r t
 
-||| Copy the content of a byte array to a new array.
+||| Copy the content of an immutable byte array to a new immutable byte array.
 |||
 ||| This is mainly useful for reducing memory consumption, in case the
 ||| original array is actually backed by a much larger array, for
-||| instance after taking a smalle prefix of a large array with `take`.
+||| instance after taking a smaller prefix of a large array with `take`.
 export
 force : {n : _} -> IBuffer n -> IBuffer n
 force buf = run1 $ \t => let r # t := thaw buf t in unsafeFreeze r t
@@ -101,7 +101,7 @@ force buf = run1 $ \t => let r # t := thaw buf t in unsafeFreeze r t
 --          Eq and Ord
 --------------------------------------------------------------------------------
 
-||| Lexicographic comparison of Arrays of distinct length
+||| Lexicographic comparison of immutable byte arrays of distinct length.
 export
 hcomp : {m,n : Nat} -> IBuffer m -> IBuffer n -> Ordering
 hcomp a1 a2 = go m n
@@ -115,7 +115,7 @@ hcomp a1 a2 = go m n
       EQ => go k j
       r  => r
 
-||| Heterogeneous equality for Arrays
+||| Heterogeneous equality for immutable byte arrays.
 export
 heq : {m,n : Nat} -> IBuffer m -> IBuffer n -> Bool
 heq a1 a2 = go m n
@@ -180,12 +180,12 @@ ontoVectWithIndex xs (S v) arr =
   rewrite sym (plusSuccRightSucc k v)
   in let x := natToFinLT v in ontoVectWithIndex ((x, at arr x) :: xs) v arr
 
-||| Convert an array to a vector of the same length.
+||| Convert an immutable byte array to a vector of the same length.
 export %inline
 toVect : {n : _} -> IBuffer n -> Vect n Bits8
 toVect = ontoVect [] n
 
-||| Convert an array to a vector of the same length
+||| Convert an immutable byte array to a vector of the same length
 ||| pairing all values with their index.
 export %inline
 toVectWithIndex : {n : _} -> IBuffer n -> Vect n (Fin n, Bits8)
@@ -201,7 +201,7 @@ foldr_ :
 foldr_ 0     _ x arr = x
 foldr_ (S k) f x arr = foldr_ k f (f (atNat arr k) x) arr
 
-||| Right fold over the values of a byte array plus their indices.
+||| Right fold over the values of an immutable byte array plus their indices.
 export %inline
 foldr : {n : _} -> (Bits8 -> a -> a) -> a -> IBuffer n -> a
 foldr = foldr_ n
@@ -221,7 +221,7 @@ foldrKV_ 0     _ x arr = x
 foldrKV_ (S k) f x arr =
   let fin := natToFinLT k @{prf} in foldrKV_ k f (f fin (at arr fin) x) arr
 
-||| Right fold over the values of a byte array plus their indices.
+||| Right fold over the values of an immutable  byte array plus their indices.
 export %inline
 foldrKV : {n : _} -> (Fin n -> Bits8 -> a -> a) -> a -> IBuffer n -> a
 foldrKV = foldrKV_ n
@@ -236,7 +236,7 @@ foldl_ :
 foldl_ 0     _ v arr = v
 foldl_ (S k) f v arr = foldl_ k f (f v (ix arr k)) arr
 
-||| Left fold over the values of a byte array.
+||| Left fold over the values of an immutable byte array.
 export %inline
 foldl : {n : _} -> (a -> Bits8 -> a) -> a -> IBuffer n -> a
 foldl = foldl_ n
@@ -256,7 +256,7 @@ foldlKV_ 0     _ v arr = v
 foldlKV_ (S k) f v arr =
   let fin := ixToFin x in foldlKV_ k f (f fin v (at arr fin)) arr
 
-||| Left fold over the values of a byte array plus their indices.
+||| Left fold over the values of an immutable byte array plus their indices.
 export %inline
 foldlKV : {n : _} -> (Fin n -> a -> Bits8 -> a) -> a -> IBuffer n -> a
 foldlKV = foldlKV_ n
@@ -265,27 +265,27 @@ export
 {n : Nat} -> Show (IBuffer n) where
   showPrec p arr = showCon p "buffer" (showArg $ ontoList [] n arr)
 
-||| Mapping over the values of an array together with their indices.
+||| Mapping over the values of an immutable byte array together with their indices.
 export %inline
 mapWithIndex : {n : _} -> (Fin n -> Bits8 -> Bits8) -> IBuffer n -> IBuffer n
 mapWithIndex f arr = generate n (\x => f x (at arr x))
 
-||| Mapping over the values of an array together with their indices.
+||| Mapping over the values of an immutable byte array together with their indices.
 export %inline
 map : {n : _} -> (Bits8 -> Bits8) -> IBuffer n -> IBuffer n
 map f arr = generate n (f . at arr)
 
-||| Update a single position in an array by applying the given
+||| Update a single position in an immutable array by applying the given
 ||| function.
 |||
-||| This will have to copy the whol array, so it runs in O(n).
+||| This will have to copy the whole array, so it runs in O(n).
 export
 updateAt : {n : _} -> Fin n -> (Bits8 -> Bits8) -> IBuffer n -> IBuffer n
 updateAt x f = mapWithIndex (\k,v => if x == k then f v else v)
 
-||| Set a single position in an array.
+||| Set a single position in an immutable byte array.
 |||
-||| This will have to copy the whol array, so it runs in O(n).
+||| This will have to copy the whole array, so it runs in O(n).
 export
 setAt : {n : _} -> Fin n -> Bits8 -> IBuffer n -> IBuffer n
 setAt x y = mapWithIndex (\k,v => if x == k then y else v)
@@ -294,7 +294,7 @@ setAt x y = mapWithIndex (\k,v => if x == k then y else v)
 --          Traversals
 --------------------------------------------------------------------------------
 
-||| Effectful traversal of the values in a graph together with
+||| Effectful traversal of the values in an immutable byte array together with
 ||| their corresponding indices.
 export
 traverseWithIndex :
@@ -319,7 +319,7 @@ traverse = traverseWithIndex . const
 --          Concatenation
 --------------------------------------------------------------------------------
 
-||| Concatenate two byte arrays.
+||| Concatenate two immutable byte arrays.
 export
 append : {m,n : _} -> IBuffer m -> IBuffer n -> IBuffer (m + n)
 append src1 src2 =

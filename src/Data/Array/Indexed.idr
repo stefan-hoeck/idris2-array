@@ -21,7 +21,7 @@ record Array a where
 --          Accessing Data
 --------------------------------------------------------------------------------
 
-||| Safely access a value in an array at position `n - m`.
+||| Safely access a value in an immutable array at position `n - m`.
 export %inline
 ix : IArray n a -> (0 m : Nat) -> {auto x: Ix (S m) n} -> a
 ix arr _ = at arr (ixToFin x)
@@ -40,17 +40,17 @@ export %inline
 empty : IArray 0 a
 empty = unsafeAlloc 0 unsafeFreeze
 
-||| Copy the values in a list to an array of the same length.
+||| Copy the values in a list to an immutable array of the same length.
 export %inline
 arrayL : (ls : List a) -> IArray (length ls) a
 arrayL xs = allocList xs unsafeFreeze
 
-||| Copy the values in a vector to an array of the same length.
+||| Copy the values in a vector to an immutable array of the same length.
 export %inline
 array : {n : _} -> Vect n a -> IArray n a
 array xs = allocVect xs unsafeFreeze
 
-||| Copy the values in a vector to an array of the same length
+||| Copy the values in a vector to an immutable array of the same length
 ||| in reverse order.
 |||
 ||| This is useful if the values in the array have been collected
@@ -59,7 +59,7 @@ export %inline
 revArray : {n : _} -> Vect n a -> IArray n a
 revArray xs = allocVectRev xs unsafeFreeze
 
-||| Fill an immutable array of the given size with the given value
+||| Fill an immutable array of the given size with the given value.
 export %inline
 fill : (n : Nat) -> a -> IArray n a
 fill n v = alloc n v unsafeFreeze
@@ -70,22 +70,22 @@ export %inline
 generate : (n : Nat) -> (Fin n -> a) -> IArray n a
 generate n f = allocGen n f unsafeFreeze
 
-||| Generate an array of the given size by filling it with the
+||| Generate an immutable array of the given size by filling it with the
 ||| results of repeatedly applying `f` to the initial value.
 export %inline
 iterate : (n : Nat) -> (f : a -> a) -> a -> IArray n a
 iterate n f v = allocIter n f v unsafeFreeze
 
-||| Copy the content of an array to a new array.
+||| Copy the content of an array to a new immutable array.
 |||
 ||| This is mainly useful for reducing memory consumption, in case the
 ||| original array is actually backed by a much larger array, for
-||| instance after taking a smalle prefix of a large array with `take`.
+||| instance after taking a smaller prefix of a large array with `take`.
 export
 force : {n : _} -> IArray n a -> IArray n a
 force arr = generate n (at arr)
 
-||| Allocate an array, fill it with the given default value, and use a list
+||| Allocate an immutable array, fill it with the given default value, and use a list
 ||| of pairs to replace specific positions.
 export
 fromPairs : (n : Nat) -> a -> List (Nat,a) -> IArray n a
@@ -102,7 +102,7 @@ fromPairs n v ps = alloc n v (go ps)
 --          Eq and Ord
 --------------------------------------------------------------------------------
 
-||| Lexicographic comparison of arrays of distinct length
+||| Lexicographic comparison of immutable arrays of distinct length.
 export
 hcomp : {m,n : Nat} -> Ord a => IArray m a -> IArray n a -> Ordering
 hcomp a1 a2 = go m n
@@ -116,7 +116,7 @@ hcomp a1 a2 = go m n
       EQ => go k j
       r  => r
 
-||| Heterogeneous equality for arrays
+||| Heterogeneous equality for immutable arrays.
 export
 heq : {m,n : Nat} -> Eq a => IArray m a -> IArray n a -> Bool
 heq a1 a2 = go m n
@@ -176,12 +176,12 @@ ontoVectWithIndex xs (S v) arr =
   rewrite sym (plusSuccRightSucc k v)
   in let x := natToFinLT v in ontoVectWithIndex ((x, at arr x) :: xs) v arr
 
-||| Convert an array to a vector of the same length.
+||| Convert an immutable array to a vector of the same length.
 export %inline
 toVect : {n : _} -> IArray n a -> Vect n a
 toVect = ontoVect [] n
 
-||| Convert an array to a vector of the same length
+||| Convert an immutable array to a vector of the same length
 ||| pairing all values with their index.
 export %inline
 toVectWithIndex : {n : _} -> IArray n a -> Vect n (Fin n, a)
@@ -216,12 +216,12 @@ foldlKV_ 0     _ v arr = v
 foldlKV_ (S k) f v arr =
   let fin := ixToFin x in foldlKV_ k f (f fin v (at arr fin)) arr
 
-||| Right fold over the values of an array plus their indices.
+||| Right fold over the values of an immutable array plus their indices.
 export %inline
 foldrKV : {n : _} -> (Fin n -> e -> a -> a) -> a -> IArray n e -> a
 foldrKV = foldrKV_ n
 
-||| Left fold over the values of an array plus their indices.
+||| Left fold over the values of an immutable array plus their indices.
 export %inline
 foldlKV : {n : _} -> (Fin n -> a -> e -> a) -> a -> IArray n e -> a
 foldlKV = foldlKV_ n
@@ -250,20 +250,20 @@ export
 {n : Nat} -> Show a => Show (IArray n a) where
   showPrec p arr = showCon p "array" (showArg $ ontoList [] n arr)
 
-||| Mapping over the values of an array together with their indices.
+||| Mapping over the values of an immutable array together with their indices.
 export
 mapWithIndex : {n : _} -> (Fin n -> a -> b) -> IArray n a -> IArray n b
 mapWithIndex f arr = generate n (\x => f x (at arr x))
 
-||| Update a single position in an array by applying the given
+||| Update a single position in an immutable array by applying the given
 ||| function.
 |||
-||| This will have to copy the whol array, so it runs in O(n).
+||| This will have to copy the whole array, so it runs in O(n).
 export
 updateAt : {n : _} -> Fin n -> (a -> a) -> IArray n a -> IArray n a
 updateAt x f = mapWithIndex (\k,v => if x == k then f v else v)
 
-||| Set a single position in an array.
+||| Set a single position in an immutable array.
 |||
 ||| This will have to copy the whole array, so it runs in O(n).
 export
@@ -274,7 +274,7 @@ setAt x y = mapWithIndex (\k,v => if x == k then y else v)
 --          Traversals
 --------------------------------------------------------------------------------
 
-||| Effectful traversal of the values in an array together with
+||| Effectful traversal of the values in an immutable array together with
 ||| their corresponding indices.
 export
 traverseWithIndex :
@@ -300,7 +300,7 @@ curLTE s lte = transitive lte $ ixLTE s
 0 curLT : (s : Ix (S m) n) -> LTE c (ixToNat s) -> LT c n
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
-||| Drop n elements from an array. O(n)
+||| Drop n elements from a immutable array. O(n)
 export
 drop : {n : _} -> (m : Nat) -> IArray n a -> IArray (n `minus` m) a
 drop m arr = generate (n `minus` m) (\f => at arr (inc f))
@@ -372,7 +372,7 @@ mapMaybe = mapMaybeWithKey . const
 --          Concatenating Arrays
 --------------------------------------------------------------------------------
 
-||| Size of the array after concatenating a SnocList of arrays.
+||| Size of an array after concatenating a SnocList of arrays.
 |||
 ||| It is easier to implement this and keep the indices correct,
 ||| therefore, this is the default for concatenating arrays.
@@ -381,7 +381,7 @@ SnocSize : SnocList (Array a) -> Nat
 SnocSize [<]           = 0
 SnocSize (xs :< A s _) = SnocSize xs + s
 
-||| Size of the array after concatenating a List of arrays.
+||| Size of an immutable array after concatenating a List of arrays.
 public export
 ListSize : List (Array a) -> Nat
 ListSize = SnocSize . ([<] <><)
@@ -421,7 +421,7 @@ export
 listConcat : (as : List (Array a)) -> IArray (ListSize as) a
 listConcat as = snocConcat ([<] <>< as)
 
-||| Concatenate two arrays in O(m+n) runtime.
+||| Concatenate two immutable arrays in O(m+n) runtime.
 export
 append : {m,n : Nat} -> IArray m a -> IArray n a -> IArray (m + n) a
 append src1 src2 =

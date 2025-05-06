@@ -12,7 +12,7 @@ import Data.Vect
 --          Reading and writing mutable byte arrays
 --------------------------------------------------------------------------------
 
-||| Set a value in a byte array corresponding to a position in a list
+||| Set a value in a mutable byte array corresponding to a position in a list
 ||| used for filling said array.
 export %inline
 setAtSuffix : MBuffer s (length ys) -> Suffix (x::xs) ys -> Bits8 -> F1' s
@@ -84,7 +84,7 @@ parameters (r : MBuffer s n)
 --          Allocating Buffers
 --------------------------------------------------------------------------------
 
-||| Writes the data from a list to a mutable byte vector.
+||| Writes the data from a list to a mutable byte array.
 export
 writeList :
      MBuffer s (length xs)
@@ -98,7 +98,7 @@ writeList r (y :: ys) t =
 
 parameters (r : MBuffer s n)
 
-  ||| Writes the data from a vector to a mutable array.
+  ||| Writes the data from a vector to a mutable byte array.
   export
   writeVect : Vect k Bits8 -> Ix k n => F1' s
   writeVect           []        t = () # t
@@ -106,7 +106,7 @@ parameters (r : MBuffer s n)
     let _ # t := setIx r m y t
      in writeVect ys t
 
-  ||| Writes the data from a vector to a mutable array in reverse order.
+  ||| Writes the data from a vector to a mutable byte array in reverse order.
   export
   writeVectRev : (m : Nat) -> Vect k Bits8 -> (0 _ : LTE m n) => F1' s
   writeVectRev (S l) (y :: ys) t =
@@ -114,7 +114,7 @@ parameters (r : MBuffer s n)
      in writeVectRev l ys t
   writeVectRev _     _         t = () # t
 
-  ||| Overwrite the values in a mutable array from the
+  ||| Overwrite the values in a mutable byte array from the
   ||| given index downward with the result of the given function.
   export
   genFrom : (m : Nat) -> (0 _ : LTE m n) => (Fin n -> Bits8) -> F1' s
@@ -123,7 +123,7 @@ parameters (r : MBuffer s n)
     let _ # t := setNat r k (f $ natToFinLT k) t
      in genFrom k f t
 
-  ||| Overwrite the values in a mutable array from the
+  ||| Overwrite the values in a mutable byte array from the
   ||| given index upward with the results of applying the given
   ||| function repeatedly.
   export
@@ -139,7 +139,7 @@ parameters (r : MBuffer s n)
 
 parameters {n : Nat}
            (r : MBuffer s n)
-  ||| Allocates a new mutable buffer and adds the elements from `r`
+  ||| Allocates a new mutable byte array and adds the elements from `r`
   ||| at its beginning.
   export
   mgrow : (m : Nat) -> F1 s (MBuffer s (m+n))
@@ -156,7 +156,7 @@ parameters {m, n : Nat}
            (p : MBuffer s m)
            (q : MBuffer s n)
 
-  ||| Allocates a new mutable buffer and adds the elements from `p`
+  ||| Allocates a new mutable byte array and adds the elements from `p`
   ||| at its beginning, followed by adding the elements from `q`.
   export
   mappend : F1 s (MBuffer s (m+n))
@@ -180,7 +180,7 @@ parameters {n : Nat}
            (f : Bits8 -> Bool)
            (p : MBuffer s n)
 
-  ||| Filters the values in a mutable buffer according to the given predicate.
+  ||| Filters the values in a mutable byte array according to the given predicate.
   export
   mfilter : F1 s (m ** MBuffer s m)
   mfilter t =

@@ -68,14 +68,14 @@ export %inline
 at : IBuffer n -> Fin n -> Bits8
 at (IB buf) m = prim__getByte buf (cast $ finToNat m)
 
-||| Safely access a value in a buffer at the given position
+||| Safely access a value in an immutable byte array at the given position
 ||| and offset.
 export %inline
 atOffset : IBuffer n -> Fin m -> (off : Nat) -> (0 p : LTE (off+m) n) => Bits8
 atOffset (IB buf) m off =
   prim__getByteOffset buf (cast $ finToNat m) (cast off)
 
-||| We can wrap a prefix of a byte array in O(1) simply by giving it
+||| We can wrap a prefix of an immutable byte array in O(1) simply by giving it
 ||| a new size index.
 |||
 ||| Note: If you only need a small portion of a potentially large
@@ -85,17 +85,17 @@ export
 take : (0 m : Nat) -> IBuffer n -> {auto 0 lte : LTE m n} -> IBuffer m
 take _ (IB buf) = IB buf
 
-||| Convert an UTF-8 string to a buffer
+||| Convert an UTF-8 string to an immutable byte array.
 export %noinline
 fromString : (s : String) -> IBuffer (cast $ stringByteLength s)
 fromString s = IB (prim__fromString s)
 
-||| Convert a section of a byte array to an UTF-8 string.
+||| Convert a section of an immutable byte array to an UTF-8 string.
 export
 toString : IBuffer n -> (off,len : Nat) -> (0 _ : LTE (off + len) n) => String
 toString (IB buf) off len = prim__getString buf (cast off) (cast len)
 
-||| Extracts the inner buffer held by a byte array without copying.
+||| Extracts the inner buffer held by an immutable byte array without copying.
 |||
 ||| This allows us to write efficiently write the data to a file
 ||| without copying it first. This is a highly unsafe operation,
@@ -104,7 +104,7 @@ export
 unsafeGetBuffer : IBuffer n -> Buffer
 unsafeGetBuffer (IB buf) = buf
 
-||| Wrapps a bare mutable buffer in an `IBuffer`.
+||| Wraps a bare mutable buffer in an `IBuffer`.
 |||
 ||| Client code is responsible to make sure the original buffer is no longer
 ||| used.
@@ -140,19 +140,19 @@ unsafeFromMBuffer (MB buf) = buf
 -- Utilities
 --------------------------------------------------------------------------------
 
-||| Creates a new mutable bound to linear computation `s`.
+||| Creates a new mutable byte array bound to linear computation `s`.
 export %inline
 mbuffer1 : (n : Nat) -> F1 s (MBuffer s n)
 mbuffer1 n t =
   let MkIORes b _ := prim__newBuf (cast n) %MkWorld
    in MB b # t
 
-||| Creates a new mutable buffer in `IO`.
+||| Creates a new mutable byte array in `IO`.
 export %inline
 mbuffer : Lift1 s f => (n : Nat) -> f (MBuffer s n)
 mbuffer n = lift1 (mbuffer1 n)
 
-||| Safely write a value to a mutable byte vector.
+||| Safely write a value to a mutable byte array.
 export %inline
 set : (r : MBuffer s n) -> Fin n -> Bits8 -> F1' s
 set (MB buf) ix v = ffi (prim__setByte buf (cast $ finToNat ix) v)
@@ -167,12 +167,12 @@ export
 modify : (r : MBuffer s n) -> Fin n -> (Bits8 -> Bits8) -> F1' s
 modify r m f t = let v # t := get r m t in set r m (f v) t
 
-||| Extracts a string from a (possibly partially) filled byte array.
+||| Extracts a string from a (possibly partially) filled mutable byte array.
 export %inline
 bufString : (r : MBuffer s n) -> (m : Nat) -> (0 lte : LTE m n) => F1 s String
 bufString (MB buf) m t = prim__getString buf 0 (cast m) # t
 
-||| Wraps a mutable buffer in a shorter one.
+||| Wraps a mutable byte array in a shorter one.
 export %inline
 mtake : MBuffer s n -> (0 m : Nat) -> (0 lte : LTE m n) => F1 s (MBuffer s m)
 mtake (MB buf) _ t = MB buf # t
@@ -217,7 +217,7 @@ icopy :
   -> F1' s
 icopy (IB src) = copy {m} (MB src)
 
-||| Copy the content of an immutable buffer to a new buffer.
+||| Copy the content of an immutable byte array to a new byte array.
 export
 thaw : {n : _} -> IBuffer n -> F1 s (MBuffer s n)
 thaw src t =
@@ -225,7 +225,7 @@ thaw src t =
         _ # t := icopy src 0 0 n @{reflexive} @{reflexive} r t
      in r # t
 
-||| Wrap a mutable buffer in an `IBuffer` without copying.
+||| Wrap a mutable byte array in an immutable byte array without copying.
 |||
 ||| In order to make this safe, the associated linear token has to
 ||| be discarded.
@@ -251,7 +251,7 @@ export %inline
 unsafeFreeze : (r : MBuffer s n) -> F1 s (IBuffer n)
 unsafeFreeze r = unsafeFreezeLTE @{reflexive} r n
 
-||| Copy a prefix of a mutable buffer into an `IBuffer`.
+||| Copy a prefix of a mutable byte arrya into an immutable byte array.
 export
 freezeLTE : MBuffer s n -> (m : Nat) -> (0 p : LTE m n) => F1 s (IBuffer m)
 freezeLTE src m t =
@@ -259,7 +259,7 @@ freezeLTE src m t =
       _          # t := copy src 0 0 m @{p} @{reflexive} r t
    in IB buf     # t
 
-||| Copy a mutable buffer into an `IBuffer`.
+||| Copy a mutable byte array into an immutable byte array.
 export %inline
 freeze : {n : _} -> MBuffer s n -> F1 s (IBuffer n)
 freeze src = freezeLTE src n @{reflexive}
@@ -268,7 +268,7 @@ freeze src = freezeLTE src n @{reflexive}
 --          Reading and Writing Files
 --------------------------------------------------------------------------------
 
-||| Read up to `n` bytes from a file into an immutable buffer.
+||| Read up to `n` bytes from a file into an immutable byte array.
 export
 readIBuffer :
      {auto has : HasIO io}
@@ -282,7 +282,7 @@ readIBuffer max f = do
      then pure (Right (cast r ** IB buf))
      else pure (Left FileReadError)
 
-||| Write up to `len` bytes from a buffer to a file, starting
+||| Write up to `len` bytes from an immutable byte array to a file, starting
 ||| at the given offset.
 export
 writeIBuffer :
@@ -294,7 +294,7 @@ writeIBuffer :
   -> io (Either (FileError,Int) ())
 writeIBuffer h o s (IB buf) = writeBufferData h buf (cast o) (cast s)
 
-||| Write up to `len` bytes from a buffer to a file, starting
+||| Write up to `len` bytes from a mutable byte array to a file, starting
 ||| at the given offset.
 export
 writeMBuffer :
