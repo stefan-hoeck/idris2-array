@@ -125,6 +125,17 @@ prop_iterate : Property
 prop_iterate = property1 $
   Indexed.toList (Indexed.iterate 5 (*3) 1) === [1,3,9,27,81]
 
+prop_mfilter : Property
+prop_mfilter = property $ do
+  n  <- forAll (nat $ linear 0 20)
+  vs <- forAll (buf n)
+  let x' = filter (< 10) (toList vs)
+  ( run1 $ \t =>
+     let x''          # t := thaw vs t
+         (rsize ** r) # t := mfilter (< 10) x'' t
+         z            # t := freeze r t
+       in toList z # t ) === x'
+
 prop_foldrKV : Property
 prop_foldrKV = property1 $
   foldrKV (\x,v,vs => (x,v) :: vs) [] (buffer [7,8,10]) ===
@@ -190,6 +201,7 @@ props = MkGroup "Buffer"
   , ("prop_foldr", prop_foldr)
   , ("prop_generate", prop_generate)
   , ("prop_iterate", prop_iterate)
+  , ("prop_mfilter", prop_mfilter)
   , ("prop_foldrKV", prop_foldrKV)
   , ("prop_foldlKV", prop_foldlKV)
   , ("prop_traverse_id", prop_traverse_id)

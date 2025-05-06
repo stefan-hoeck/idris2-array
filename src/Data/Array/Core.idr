@@ -334,7 +334,7 @@ export
 unsafeAlloc : (n : Nat) -> (fun : WithMArray n a b) -> b
 unsafeAlloc n f = run1 $ \t => let r # t2 := unsafeMArray1 n t in f r t2
 
-||| Wrap a mutable array in an `IArray`, which can then be freely shared.
+||| Wrap a mutable array in an immutable array, which can then be freely shared.
 |||
 ||| It is not possible the extract and share the underlying `ArrayData`
 ||| wrapped in an `IArray`, so we don't have to be afraid of shared mutable
@@ -357,7 +357,7 @@ unsafeFreezeLTE :
   -> F1 s (IArray m a)
 unsafeFreezeLTE (MA arr) _ t = IA arr # t
 
-||| Wrap a mutable array in an `IArray`, which can then be freely shared.
+||| Wrap a mutable array in an immutable array, which can then be freely shared.
 |||
 ||| Note: For reasons of efficiency, this does not copy the mutable array,
 |||       and therefore, it must no longer be modified after calling
@@ -366,7 +366,7 @@ export %inline
 unsafeFreeze : (r : MArray s n a) -> F1 s (IArray n a)
 unsafeFreeze r = unsafeFreezeLTE @{reflexive} r n
 
-||| Copy a prefix of a mutable buffer into an `IBuffer`.
+||| Copy a prefix of a mutable array into an immutable array.
 export
 freezeLTE : MArray s n a -> (m : Nat) -> (0 p : LTE m n) => F1 s (IArray m a)
 freezeLTE src m t =
