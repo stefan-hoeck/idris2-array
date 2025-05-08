@@ -257,6 +257,33 @@ parameters {n : Nat}
                  go m j q t
 
 --------------------------------------------------------------------------------
+--          Maps and Folds
+--------------------------------------------------------------------------------
+
+parameters {n : Nat}
+           (f : a -> b)
+           (p : MArray s n a)
+
+  ||| Apply a function `f` to each element of the mutable array.
+  export
+  mmap : F1 s (MArray s n b)
+  mmap t =
+    let tft # t := unsafeMArray1 n t
+      in go 0 n tft t
+    where
+      go :  (m, x : Nat)
+         -> (q : MArray s n b)
+         -> {auto v : Ix x n}
+         -> {auto 0 prf : LTE m $ ixToNat v}
+         -> F1 s (MArray s n b)
+      go m Z     q t =
+        q # t
+      go m (S j) q t =
+        let j' # t := getIx p j t
+            () # t := setNat q m @{curLT v prf} (f j') t
+          in go (S m) j q t
+
+--------------------------------------------------------------------------------
 --          Linear Utilities
 --------------------------------------------------------------------------------
 
