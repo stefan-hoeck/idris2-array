@@ -133,6 +133,16 @@ parameters (r : MArray s n a)
     genFrom k f
 
   ||| Overwrite the values in a mutable array from the
+  ||| given index downward with the result of the given function. 
+  export
+  genFrom' : (m : Nat) -> (0 _ : LTE m n) => (Fin n -> F1 s a) -> F1' s
+  genFrom' 0     f t = () # t
+  genFrom' (S k) f t =
+    let f' # t := f (natToFinLT k) t
+        _  # t := setNat r k f' t
+      in genFrom' k f t
+
+  ||| Overwrite the values in a mutable array from the
   ||| given index upward with the results of applying the given
   ||| function repeatedly.
   export
@@ -261,27 +271,22 @@ parameters {n : Nat}
 --------------------------------------------------------------------------------
 
 parameters {n : Nat}
-           (f : a -> b)
-           (p : MArray s n a)
+           (f : F1 s a -> F1 s b)
+           (r : MArray s n a)
 
   ||| Apply a function `f` to each element of the mutable array.
   export
   mmap : F1 s (MArray s n b)
   mmap t =
-    let tft # t := unsafeMArray1 n t
-      in go 0 n tft t
+    let tmt # t := unsafeMArray1 n t
+        _   # t := genFrom' tmt n (f . go) t
+      in tmt # t
     where
-      go :  (m, x : Nat)
-         -> (q : MArray s n b)
-         -> {auto v : Ix x n}
-         -> {auto 0 prf : LTE m $ ixToNat v}
-         -> F1 s (MArray s n b)
-      go m Z     q t =
-        q # t
-      go m (S j) q t =
-        let j' # t := getIx p j t
-            () # t := setNat q m @{curLT v prf} (f j') t
-          in go (S m) j q t
+      go :  Fin n
+         -> F1 s a
+      go x t =
+        let x' # t := get r x t
+          in x' # t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
