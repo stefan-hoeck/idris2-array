@@ -259,11 +259,11 @@ parameters {n : Nat}
 parameters {n : Nat}
            (m : Nat)
            (p : MArray s n a)
+           {auto _ : Ix (n `minus` m) n}
 
   ||| Returns the suffix of a mutable array after the first `n` elements.
   export
-  mdrop :  {auto _ : Ix (n `minus` m) n}
-        -> F1 s (o ** MArray s o a)
+  mdrop : F1 s (o ** MArray s o a)
   mdrop t =
     let tdt # t := unsafeMArray1 n t
       in go 0 (n `minus` m) tdt t
