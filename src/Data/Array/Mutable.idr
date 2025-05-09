@@ -262,11 +262,23 @@ parameters {n : Nat}
 
   ||| Returns the suffix of a mutable array after the first `n` elements.
   export
-  mdrop : F1 s (MArray s (n `minus` m) a)
+  mdrop : F1 s (o ** MArray s o a)
   mdrop t =
-    let tdt # t := unsafeMArray1 (n `minus` m) t
-        _   # t := copy p ((n `minus` m) `minus` 1) 0 (n `minus` m) @{reflexive} @{lteAddRight} tdt t 
-      in tdt # t 
+    let tdt # t := unsafeMArray1 n t
+      in go 0 (n `minus` m) tdt t
+    where
+      go :  (o, x : Nat)
+         -> (q : MArray s n a)
+         -> {auto v : Ix x n}
+         -> {auto 0 prf : LTE o $ ixToNat v}
+         -> F1 s (o ** MArray s o a)
+      go o Z     q t =
+        let q' # t := mtake q o @{curLTE v prf} t
+          in (o ** q') # t
+      go o (S j) q t =
+        let j' # t := getIx p j t
+            () # t := setNat q o @{curLT v prf} j' t
+          in go (S o) j q t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
