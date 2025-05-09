@@ -256,6 +256,18 @@ parameters {n : Nat}
                False =>
                  go m j q t
 
+parameters {n : Nat}
+           (m : Nat)
+           (p : MArray s n a)
+
+  ||| Returns the suffix of a mutable array after the first `n` elements.
+  export
+  mdrop : F1 s (MArray s (n `minus` m) a)
+  mdrop t =
+    let tdt # t := unsafeMArray1 (n `minus` m) t
+        _   # t := copy p ((n `minus` m) `minus` 1) 0 (n `minus` m) @{reflexive} @{lteAddRight} tdt t 
+      in tdt # t 
+
 --------------------------------------------------------------------------------
 --          Linear Utilities
 --------------------------------------------------------------------------------
