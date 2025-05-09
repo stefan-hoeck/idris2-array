@@ -261,12 +261,20 @@ parameters {n : Nat}
            (p : MArray s n a)
            {auto _ : Ix (n `minus` m) n}
 
-  ||| Returns the suffix of a mutable array after the first `n` elements.
+  ||| Returns the suffix of a mutable array after the first `m` elements.
   export
   mdrop : F1 s (o ** MArray s o a)
   mdrop t =
-    let tdt # t := unsafeMArray1 n t
-      in go 0 (n `minus` m) tdt t
+    case compare m n of
+      LT =>
+        let tdt # t := unsafeMArray1 n t
+          in go 0 (n `minus` m) tdt t
+      EQ =>
+        let arr # t := unsafeMArray1 0 t
+          in (0 ** arr) # t
+      GT =>
+        let arr # t := unsafeMArray1 0 t
+          in (0 ** arr) # t
     where
       go :  (o, x : Nat)
          -> (q : MArray s n a)
