@@ -255,7 +255,7 @@ parameters {n : Nat}
                    in go (S m) j q t
                False =>
                  go m j q t
-
+{-
 parameters {n : Nat}
            (m : Nat)
            (p : MArray s n a)
@@ -288,6 +288,19 @@ parameters {n : Nat}
         let j' # t := getIx p j t
             () # t := setNat q o @{curLT v prf} j' t
           in go (S o) j q t
+-}
+
+parameters {n : _}
+           (m : Nat)
+           (r : MArray s n a)
+
+  export
+  mdrop : F1 s (MArray s (n `minus` m) a)
+  mdrop t =
+    let tdt # t := unsafeMArray1 (n `minus` m) t
+        _   # t := copy r (n `minus` (n `minus` m)) 0 (n `minus` m) @{reflexive} tdt t
+      in tdt # t
+
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
