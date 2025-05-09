@@ -133,7 +133,7 @@ parameters (r : MArray s n a)
     genFrom k f
 
   ||| Overwrite the values in a mutable array from the
-  ||| given index downward with the result of the given function. 
+  ||| given index downward with the result of the given function.
   export
   genFrom' : (m : Nat) -> (0 _ : LTE m n) => (Fin n -> F1 s a) -> F1' s
   genFrom' 0     f t = () # t
