@@ -70,6 +70,15 @@ prop_map_id = property $ do
   vs <- forAll arrBits
   vs === map id vs
 
+prop_mmap_id : Property
+prop_mmap_id = property $ do
+  vs <- forAll arrBits
+  ( run1 $ \t =>
+     let x''  # t := thaw vs.arr t
+         x''' # t := mmap id x'' t
+         z    # t := freeze x''' t
+       in A vs.size z # t ) === map id vs
+
 prop_from_to_list : Property
 prop_from_to_list = property $ do
   vs <- forAll (list (linear 0 10) anyBits8)
@@ -243,6 +252,7 @@ props = MkGroup "Array"
   , ("prop_lt", prop_lt)
   , ("prop_lte", prop_lte)
   , ("prop_map_id", prop_map_id)
+  , ("prop_mmap_id", prop_mmap_id)
   , ("prop_from_to_list", prop_from_to_list)
   , ("prop_from_to_vect", prop_from_to_vect)
   , ("prop_from_to_rev_vect", prop_from_to_rev_vect)
