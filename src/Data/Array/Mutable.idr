@@ -265,52 +265,24 @@ parameters {n : Nat}
                    in go (S m) j q t
                False =>
                  go m j q t
-{-
+
 parameters {n : Nat}
-           (m : Nat)
-           (p : MArray s n a)
-           {auto _ : Ix (n `minus` m) n}
-
-  ||| Returns the suffix of a mutable array after the first `m` elements.
-  export
-  mdrop : F1 s (o ** MArray s o a)
-  mdrop t =
-    case compare m n of
-      LT =>
-        let tdt # t := unsafeMArray1 n t
-          in go 0 (n `minus` m) tdt t
-      EQ =>
-        let arr # t := unsafeMArray1 0 t
-          in (0 ** arr) # t
-      GT =>
-        let arr # t := unsafeMArray1 0 t
-          in (0 ** arr) # t
-    where
-      go :  (o, x : Nat)
-         -> (q : MArray s n a)
-         -> {auto v : Ix x n}
-         -> {auto 0 prf : LTE o $ ixToNat v}
-         -> F1 s (o ** MArray s o a)
-      go o Z     q t =
-        let q' # t := mtake q o @{curLTE v prf} t
-          in (o ** q') # t
-      go o (S j) q t =
-        let j' # t := getIx p j t
-            () # t := setNat q o @{curLT v prf} j' t
-          in go (S o) j q t
--}
-
-parameters {n : _}
            (m : Nat)
            (r : MArray s n a)
 
+  ||| Drop `m` elements from a mutable array.
   export
   mdrop : F1 s (MArray s (n `minus` m) a)
   mdrop t =
     let tdt # t := unsafeMArray1 (n `minus` m) t
-        _   # t := copy r (n `minus` (n `minus` m)) 0 (n `minus` m) @{reflexive} tdt t
+        _   # t := genFrom' tdt (n `minus` m) (\f => go (inc f)) t
       in tdt # t
-
+    where
+      go :  Fin n
+         -> F1 s a
+      go x t =
+        let x' # t := get r x t
+          in x' # t
 
 --------------------------------------------------------------------------------
 --          Maps and Folds
