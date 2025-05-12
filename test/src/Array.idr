@@ -11,9 +11,6 @@ import Hedgehog
 
 %default total
 
-0 curLTE : (s : Ix m n) -> LTE c (ixToNat s) -> LTE c n
-curLTE s lte = transitive lte $ ixLTE s
-
 arrayOf : Gen a -> Gen (Array a)
 arrayOf g = fromList <$> list (linear 0 20) g
 
