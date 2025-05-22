@@ -275,14 +275,8 @@ parameters {n : Nat}
   mdrop : F1 s (MArray s (n `minus` m) a)
   mdrop t =
     let tdt # t := unsafeMArray1 (n `minus` m) t
-        _   # t := genFrom' tdt (n `minus` m) (\f => go (inc f)) t
+        _   # t := copy r (n `minus` (n `minus` m)) 0 (n `minus` m) @{dropLemma m n} tdt t
       in tdt # t
-    where
-      go :  Fin n
-         -> F1 s a
-      go x t =
-        let x' # t := get r x t
-          in x' # t
 
 --------------------------------------------------------------------------------
 --          Maps and Folds
