@@ -266,6 +266,18 @@ parameters {n : Nat}
                False =>
                  go m j q t
 
+parameters {n : Nat}
+           (m : Nat)
+           (r : MArray s n a)
+
+  ||| Drop `m` elements from a mutable array.
+  export
+  mdrop : F1 s (MArray s (n `minus` m) a)
+  mdrop t =
+    let tdt # t := unsafeMArray1 (n `minus` m) t
+        _   # t := copy r (n `minus` (n `minus` m)) 0 (n `minus` m) @{dropLemma m n} tdt t
+      in tdt # t
+
 --------------------------------------------------------------------------------
 --          Maps and Folds
 --------------------------------------------------------------------------------
