@@ -226,7 +226,7 @@ parameters {m, n : Nat}
     let tgt # t := unsafeMArray1 (m+n) t
         _   # t := copy p 0 0 m @{reflexive} @{lteAddRight m} tgt t
         _   # t := copy q 0 m n @{reflexive} tgt t
-      in tgt # t
+     in tgt # t
 
 --------------------------------------------------------------------------------
 --          Sub-Arrays
@@ -247,7 +247,7 @@ parameters {n : Nat}
   mfilter : F1 s (m ** MArray s m a)
   mfilter t =
     let tft # t := unsafeMArray1 n t
-      in go 0 n tft t
+     in go 0 n tft t
     where
       go :  (m, x : Nat)
          -> (q : MArray s n a)
@@ -256,15 +256,15 @@ parameters {n : Nat}
          -> F1 s (m ** MArray s m a)
       go m Z     q t =
         let q' # t := mtake q m @{curLTE v prf} t
-          in (m ** q') # t
+         in (m ** q') # t
       go m (S j) q t =
         let j' # t := getIx p j t
-          in case f j' of
-               True  =>
-                 let () # t := setNat q m @{curLT v prf} j' t
-                   in go (S m) j q t
-               False =>
-                 go m j q t
+         in case f j' of
+              True  =>
+                let () # t := setNat q m @{curLT v prf} j' t
+                 in go (S m) j q t
+              False =>
+                go m j q t
 
 parameters {n : Nat}
            (m : Nat)
@@ -276,7 +276,7 @@ parameters {n : Nat}
   mdrop t =
     let tdt # t := unsafeMArray1 (n `minus` m) t
         _   # t := copy r (n `minus` (n `minus` m)) 0 (n `minus` m) @{dropLemma m n} tdt t
-      in tdt # t
+     in tdt # t
 
 --------------------------------------------------------------------------------
 --          Maps and Folds
