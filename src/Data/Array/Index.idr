@@ -277,6 +277,30 @@ export
 lteAddLeft n = rewrite plusCommutative m n in lteAddRight n
 
 --------------------------------------------------------------------------------
+--          Lemma (Drop)
+--------------------------------------------------------------------------------
+
+export
+0 plusMinus : (m,n : Nat) -> LTE m n -> m + (n `minus` m) === n
+plusMinus 0 0         _           = Refl
+plusMinus 0 (S k)     x           = Refl
+plusMinus (S k) (S j) (LTESucc p) = cong S $ plusMinus k j p
+plusMinus (S k) 0     x impossible
+
+export
+0 eqLTE : (m,n : Nat) -> m === n -> LTE m n
+eqLTE 0     0     Refl = LTEZero
+eqLTE (S k) (S k) Refl = LTESucc $ eqLTE k k Refl
+
+export
+0 dropLemma : (k,n : Nat) -> LTE (plus (minus n (minus n k)) (minus n k)) n
+dropLemma k n =
+  let p1 := minusLTE n k
+      p2 := plusMinus _ _ p1
+      p3 := trans (plusCommutative _ _) p2
+   in eqLTE _ _ p3
+
+--------------------------------------------------------------------------------
 --          Relations
 --------------------------------------------------------------------------------
 

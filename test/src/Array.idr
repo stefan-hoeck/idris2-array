@@ -134,6 +134,21 @@ prop_mfilter = property $ do
          z            # t := freeze r t
        in A rsize z # t ) === x'
 
+prop_drop : Property
+prop_drop = property $ do
+  vs <- forAll arrBits
+  toList (drop (vs.size `minus` 1) vs) === drop (vs.size `minus` 1) (toList vs)
+
+prop_mdrop : Property
+prop_mdrop = property $ do
+  x <- forAll arrBits
+  let x' = drop (x.size `minus` 1) x
+  ( run1 $ \t =>
+     let x'' # t := thaw x.arr t
+         r   # t := mdrop (x.size `minus` 1) x'' t
+         z   # t := freeze r t
+       in (toList z) # t ) === toList x'.arr
+
 foo : Bits8 -> Maybe String
 foo v = if v < 10 then Just (show v) else Nothing
 
@@ -244,6 +259,8 @@ props = MkGroup "Array"
   , ("prop_iterate", prop_iterate)
   , ("prop_filter", prop_filter)
   , ("prop_mfilter", prop_mfilter)
+  , ("prop_drop", prop_drop)
+  , ("prop_mdrop", prop_mdrop)
   , ("prop_mapMaybe", prop_mapMaybe)
   , ("prop_foldrKV", prop_foldrKV)
   , ("prop_foldlKV", prop_foldlKV)
