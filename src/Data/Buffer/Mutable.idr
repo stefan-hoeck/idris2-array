@@ -214,6 +214,18 @@ parameters {n : Nat}
                False =>
                  go m j q t
 
+parameters {n : Nat}
+           (m : Nat)
+           (r : MBuffer s n)
+
+  ||| Drop `m` elements from a mutable byte array.
+  export
+  mdrop : F1 s (MBuffer s (n `minus` m))
+  mdrop t =
+    let tdt # t := mbuffer1 (n `minus` m) t
+        _   # t := copy r (n `minus` (n `minus` m)) 0 (n `minus` m) @{dropLemma m n} tdt t
+     in tdt # t
+
 --------------------------------------------------------------------------------
 --          Maps and Folds
 --------------------------------------------------------------------------------

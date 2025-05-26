@@ -6,6 +6,7 @@ import Data.Buffer
 import Data.Buffer.Core
 import Data.Buffer.Indexed
 import Data.Buffer.Mutable
+import Data.List
 import Data.SOP
 import Data.SnocList
 import Data.Vect
@@ -146,6 +147,23 @@ prop_mfilter = property $ do
          z            # t := freeze r t
        in toList z # t ) === x'
 
+prop_drop : Property
+prop_drop = property $ do
+  n  <- forAll (nat $ linear 0 20)
+  vs <- forAll (buf n)
+  toList (drop (n `minus` 1) vs) === drop (n `minus` 1) (toList vs)
+
+prop_mdrop : Property
+prop_mdrop = property $ do
+  n <- forAll (nat $ linear 0 20)
+  x <- forAll (buf n)
+  let x' = drop (n `minus` 1) x
+  ( run1 $ \t =>
+     let x'' # t := thaw x t
+         r   # t := mdrop (n `minus` 1) x'' t
+         z   # t := freeze r t
+       in (toList z) # t ) === (toList x')
+
 prop_foldrKV : Property
 prop_foldrKV = property1 $
   foldrKV (\x,v,vs => (x,v) :: vs) [] (buffer [7,8,10]) ===
@@ -213,6 +231,8 @@ props = MkGroup "Buffer"
   , ("prop_generate", prop_generate)
   , ("prop_iterate", prop_iterate)
   , ("prop_mfilter", prop_mfilter)
+  , ("prop_drop", prop_drop)
+  , ("prop_mdrop", prop_mdrop)
   , ("prop_foldrKV", prop_foldrKV)
   , ("prop_foldlKV", prop_foldlKV)
   , ("prop_traverse_id", prop_traverse_id)
