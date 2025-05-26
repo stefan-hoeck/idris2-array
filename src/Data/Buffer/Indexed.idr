@@ -327,3 +327,12 @@ append src1 src2 =
     let _ # t := icopy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
         _ # t := icopy src2 0 m n @{reflexive} @{reflexive} r t
      in unsafeFreeze r t
+
+--------------------------------------------------------------------------------
+--          Sub-Buffers
+--------------------------------------------------------------------------------
+
+||| Drop n elements from a immutable byte array. O(n)
+export
+drop : {n : _} -> (m : Nat) -> IBuffer n -> IBuffer (n `minus` m)
+drop m buf = generate (n `minus` m) (\f => at buf (inc f))
