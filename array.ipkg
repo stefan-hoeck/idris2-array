@@ -7,7 +7,8 @@ depends    = base    >= 0.6.0
 
 brief      = "Immutable and mutable (linear) size-indexed arrays"
 
-modules    = Data.Array.Core
+modules    = Data.Array.All
+           , Data.Array.Core
            , Data.Array.Index
            , Data.Array.Indexed
            , Data.Array.Mutable
