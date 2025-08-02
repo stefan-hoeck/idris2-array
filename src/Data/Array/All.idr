@@ -11,6 +11,23 @@ import Data.Linear.Token
 
 %default total
 
+public export
+data El : List a -> List a -> Type where
+  ZEl : El as as
+  SEl : El as (v::bs) -> El as bs
+
+export
+elToNat : El as bs -> Nat
+elToNat ZEl     = 0
+elToNat (SEl k) = S $ elToNat k
+
+export
+0 elLemma : (el : El as (v::bs)) -> LT (elToNat el) (length as)
+elLemma ZEl     = LTESucc LTEZero
+elLemma (SEl x) =
+ let p := elLemma x
+  in ?foo
+
 --------------------------------------------------------------------------------
 -- Immutable heterogeneous arrays
 --------------------------------------------------------------------------------
@@ -80,6 +97,14 @@ export %inline
 setElem : MArrAll s f as -> f a -> (el : Elem a as) => F1' s
 setElem arr v = All.set arr (elemToFin el) (rewrite sym (ElemLemma el) in v)
 
+||| Safely write a value to a mutable heterogeneous array.
+export %inline
+setEls : MArrAll s f as -> All f bs -> (el : El as bs) -> F1' s
+setEls arr []             el t = () # t
+setEls (MA arr) (v :: vs) el t =
+ let _ # t := ffi (prim__arraySet arr (cast $ elToNat el) (believe_me v)) t
+  in setEls (MA arr) vs (SEl el) t
+
 ||| Safely read a value from a mutable array.
 |||
 ||| This returns the values thus read with unrestricted quantity, paired
@@ -100,11 +125,11 @@ setElems (v::vs) @{_::_} x t = let _ # t := setElem x v t in setElems vs x t
 
 ||| Fills a new mutable heterogeneous array bound to linear computation `s`.
 export
-mall1 : All f as -> (prf : All (`Elem` as) as) => F1 s (MArrAll s f as)
+mall1 : All f as -> F1 s (MArrAll s f as)
 mall1 vs t =
  let p # t := ffi (prim__emptyArray (cast $ len vs)) t
      arr   := MA p
-     _ # t := setElems vs @{prf} arr t
+     _ # t := setEls arr vs ZEl t
   in arr # t
 
 export %inline
@@ -113,7 +138,7 @@ unsafeFreeze (MA p) t = AA p # t
 
 ||| Fills a new mutable heterogeneous array
 export %inline
-mall : Lift1 s m => All f as -> All (`Elem` as) as => m (MArrAll s f as)
+mall : Lift1 s m => All f as -> m (MArrAll s f as)
 mall as = lift1 (mall1 as)
 
 --------------------------------------------------------------------------------
@@ -122,5 +147,5 @@ mall as = lift1 (mall1 as)
 
 ||| Creates a new immutable heterogeneous array
 export %inline
-all : All f as -> All (`Elem` as) as => ArrAll f as
+all : All f as -> ArrAll f as
 all vs = run1 $ \t => let ma # t := mall1 vs t in unsafeFreeze ma t
