@@ -43,3 +43,5 @@ jobs:
         run: pack exec test/src/Concurrent.idr
       - name: Test concurrent queue
         run: pack exec test/src/ConcurrentQueue.idr
+      - name: Run profiler
+        run: pack run array-profile

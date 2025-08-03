@@ -9,6 +9,11 @@ type   = "local"
 path   = "docs"
 ipkg   = "docs.ipkg"
 
+[custom.all.array-profile]
+type   = "local"
+path   = "profile"
+ipkg   = "profile.ipkg"
+
 [custom.all.ref1]
 type   = "git"
 url    = "https://github.com/stefan-hoeck/idris2-ref1"

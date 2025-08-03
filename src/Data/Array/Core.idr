@@ -23,14 +23,17 @@ import Syntax.T1
 --          Raw Primitives
 --------------------------------------------------------------------------------
 
+export
 %foreign "scheme:(lambda (x) (make-vector x))"
          "javascript:lambda:(n,w) => new Array(Number(n))"
 prim__emptyArray : Integer -> PrimIO AnyPtr
 
+export
 %foreign "scheme:(lambda (x i) (make-vector x i))"
          "javascript:lambda:(bi,x,w) => Array(Number(bi)).fill(x)"
 prim__newArray : Integer -> AnyPtr -> PrimIO AnyPtr
 
+export
 %foreign "scheme:(lambda (x i) (vector-ref x i))"
          "javascript:lambda:(x,bi) => x[Number(bi)]"
 prim__arrayGet : AnyPtr -> Integer -> AnyPtr
@@ -43,10 +46,12 @@ prim__arrayGet : AnyPtr -> Integer -> AnyPtr
          "javascript:lambda:(buf,at,offset)=>buf[Number(offset) + Number(at)]"
 prim__arrayGetOffset : AnyPtr -> (at, offset : Integer) -> AnyPtr
 
+export
 %foreign "scheme:(lambda (x i w) (vector-set! x i w))"
          "javascript:lambda:(x,bi,w) => {const i = Number(bi); x[i] = w}"
 prim__arraySet : AnyPtr -> Integer -> (val : AnyPtr) -> PrimIO ()
 
+export
 %foreign "scheme:(lambda (a x i v w) (if (vector-cas! x i v w) 1 0))"
          "javascript:lambda:(a,x,bi,v,w) => {const i = Number(bi); if (x[i] === v) {x[i] = w; return 1;} else {return 0;}}"
 prim__casSet : AnyPtr -> Integer -> (prev,val : a) -> Bits8
