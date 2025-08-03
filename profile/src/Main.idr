@@ -117,41 +117,49 @@ bench =
       Single "10^5" (basic loopRef 100_000)
     , Single "10^6" (basic loopRef 1_000_000)
     , Single "10^7" (basic loopRef 10_000_000)
+    , Single "10^8" (basic loopRef 100_000_000)
     ]
   , Group "loopRefrec" [
       Single "10^5" (basic loopRefrec 100_000)
     , Single "10^6" (basic loopRefrec 1_000_000)
     , Single "10^7" (basic loopRefrec 10_000_000)
+    , Single "10^8" (basic loopRefrec 100_000_000)
     ]
   , Group "loopAllFst" [
       Single "10^5" (basic loopAllFst 100_000)
     , Single "10^6" (basic loopAllFst 1_000_000)
     , Single "10^7" (basic loopAllFst 10_000_000)
+    , Single "10^8" (basic loopAllFst 100_000_000)
     ]
   , Group "loopAllLst" [
       Single "10^5" (basic loopAllLst 100_000)
     , Single "10^6" (basic loopAllLst 1_000_000)
     , Single "10^7" (basic loopAllLst 10_000_000)
+    , Single "10^8" (basic loopAllLst 100_000_000)
     ]
   , Group "loop10" [
       Single "10^5" (basic (loop10 0 True True True False True "" "foo" "bar" "baz") 100_000)
     , Single "10^6" (basic (loop10 0 True True True False True "" "foo" "bar" "baz") 1_000_000)
     , Single "10^7" (basic (loop10 0 True True True False True "" "foo" "bar" "baz") 10_000_000)
+    , Single "10^8" (basic (loop10 0 True True True False True "" "foo" "bar" "baz") 100_000_000)
     ]
   , Group "loopPair" [
       Single "10^5" (basic (loopPair (0, False)) 100_000)
     , Single "10^6" (basic (loopPair (0, False)) 1_000_000)
     , Single "10^7" (basic (loopPair (0, False)) 10_000_000)
+    , Single "10^8" (basic (loopPair (0, False)) 100_000_000)
     ]
   , Group "loopRec" [
       Single "10^5" (basic (loopRec mkRec) 100_000)
     , Single "10^6" (basic (loopRec mkRec) 1_000_000)
     , Single "10^7" (basic (loopRec mkRec) 10_000_000)
+    , Single "10^8" (basic (loopRec mkRec) 100_000_000)
     ]
   , Group "loop1" [
       Single "10^5" (basic (loop1 0) 100_000)
     , Single "10^6" (basic (loop1 0) 1_000_000)
     , Single "10^7" (basic (loop1 0) 10_000_000)
+    , Single "10^8" (basic (loop1 0) 100_000_000)
     ]
   ]
 --   , Single "long"       (basic lexBS longBS)
