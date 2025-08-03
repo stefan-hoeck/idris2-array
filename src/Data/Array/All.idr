@@ -87,6 +87,10 @@ export
 data MArrAll : (s : Type) -> (f : a -> Type) -> (as : List a) -> Type where
   MA : (arr : AnyPtr) -> MArrAll s f as
 
+public export
+0 MHArr : Type -> List Type -> Type
+MHArr s = MArrAll s Prelude.id
+
 ||| Safely write a value to a mutable heterogeneous array.
 export %inline
 set : MArrAll s f as -> (x : Fin (length as)) -> f (Index as x) -> F1' s
