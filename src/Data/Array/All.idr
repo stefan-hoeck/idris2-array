@@ -102,7 +102,7 @@ setElem : MArrAll s f as -> f a -> (el : Elem a as) => F1' s
 setElem arr v = All.set arr (elemToFin el) (rewrite sym (ElemLemma el) in v)
 
 ||| Safely write a value to a mutable heterogeneous array.
-export %inline
+export
 setEls : MArrAll s f as -> All f bs -> (el : El as bs) -> F1' s
 setEls arr []             el t = () # t
 setEls ma@(MA arr) (v :: vs) el t =
