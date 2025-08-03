@@ -105,9 +105,9 @@ setElem arr v = All.set arr (elemToFin el) (rewrite sym (ElemLemma el) in v)
 export %inline
 setEls : MArrAll s f as -> All f bs -> (el : El as bs) -> F1' s
 setEls arr []             el t = () # t
-setEls (MA arr) (v :: vs) el t =
+setEls ma@(MA arr) (v :: vs) el t =
  let _ # t := ffi (prim__arraySet arr (cast $ elToNat el) (believe_me v)) t
-  in setEls (MA arr) vs (SEl el) t
+  in setEls ma vs %search t
 
 ||| Safely read a value from a mutable array.
 |||
