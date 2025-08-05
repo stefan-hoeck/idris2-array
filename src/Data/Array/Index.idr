@@ -300,6 +300,10 @@ dropLemma k n =
       p3 := trans (plusCommutative _ _) p2
    in eqLTE _ _ p3
 
+export
+0 plusMinusLTE : (m,n : Nat) -> LTE m n -> LTE (m + (n `minus` m)) n
+plusMinusLTE m n lte = eqLTE _ _ $ plusMinus m n lte
+
 --------------------------------------------------------------------------------
 --          Relations
 --------------------------------------------------------------------------------
