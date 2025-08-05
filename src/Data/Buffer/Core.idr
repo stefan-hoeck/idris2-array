@@ -1,5 +1,6 @@
 module Data.Buffer.Core
 
+import Data.Array.Index
 import Data.Buffer
 import Data.Linear.Token
 import public Data.Fin
@@ -172,6 +173,29 @@ export %inline
 bufString : (r : MBuffer s n) -> (m : Nat) -> (0 lte : LTE m n) => F1 s String
 bufString (MB buf) m t = prim__getString buf 0 (cast m) # t
 
+||| Like `bufString` but extracts a substring from position
+||| `from` up to but not including position `till`.
+export
+bufStringFromTill :
+     (r : MBuffer s n)
+  -> (from, till : Nat)
+  -> {auto 0 lt1 : LTE from till}
+  -> {auto 0 lt2 : LTE till n}
+  -> F1 s String
+bufStringFromTill (MB buf) from till t =
+  prim__getString buf (cast from) (cast $ till `minus` from) # t
+
+||| Like `bufString` but extracts a substring from position
+||| `from` up to and including position `to`.
+export
+bufStringFromTo :
+     (r : MBuffer s n)
+  -> (from, to : Nat)
+  -> {auto 0 lte : LTE from to}
+  -> {auto 0 lt  : LT to n}
+  -> F1 s String
+bufStringFromTo buf from to = bufStringFromTill buf from (S to)
+
 ||| Wraps a mutable byte array in a shorter one.
 export %inline
 mtake : MBuffer s n -> (0 m : Nat) -> (0 lte : LTE m n) => F1 s (MBuffer s m)
@@ -216,6 +240,41 @@ icopy :
   -> (r         : MBuffer s n)
   -> F1' s
 icopy (IB src) = copy {m} (MB src)
+
+||| Extracts an immutable sub-array from a mutable byte array.
+export %inline
+bufSubstring :
+     (r : MBuffer s n)
+  -> (off,len : Nat)
+  -> {auto 0 lte : LTE (off+len) n}
+  -> F1 s (IBuffer len)
+bufSubstring (MB src) off len t =
+ let MB dst # t := mbuffer1 len t
+     _      # t := ffi (prim__copy src (cast off) (cast len) dst 0) t
+  in IB dst # t
+
+||| Like `bufSubstring` but extracts a substring from position
+||| `from` up to but not including position `till`.
+export
+bufSubstringFromTill :
+     (r : MBuffer s n)
+  -> (from, till : Nat)
+  -> {auto 0 lt1 : LTE from till}
+  -> {auto 0 lt2 : LTE till n}
+  -> F1 s (IBuffer (till `minus` from))
+bufSubstringFromTill r f t =
+  bufSubstring r f (t `minus` f) @{transitive (plusMinusLTE _ _ lt1) lt2}
+
+||| Like `bufSubstring` but extracts a substring from position
+||| `from` up to and including position `to`.
+export %inline
+bufSubstringFromTo :
+     (r : MBuffer s n)
+  -> (from, to : Nat)
+  -> {auto 0 lte : LTE from to}
+  -> {auto 0 lt  : LT to n}
+  -> F1 s (IBuffer (S to `minus` from))
+bufSubstringFromTo r f t = bufSubstringFromTill r f (S t)
 
 ||| Copy the content of an immutable byte array to a new byte array.
 export
