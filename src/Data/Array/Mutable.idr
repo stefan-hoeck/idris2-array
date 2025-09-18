@@ -11,6 +11,8 @@ import Syntax.T1
 
 %default total
 
+%hide Data.Linear.(.)
+
 --------------------------------------------------------------------------------
 --          Reading and writing mutable arrays
 --------------------------------------------------------------------------------
@@ -283,7 +285,7 @@ parameters {n : Nat}
 --------------------------------------------------------------------------------
 
 parameters {n : Nat}
-           (f : F1 s a -> F1 s b)
+           (f : a -> b)
            (r : MArray s n a)
 
   ||| Apply a function `f` to each element of the mutable array.
@@ -291,14 +293,15 @@ parameters {n : Nat}
   mmap : F1 s (MArray s n b)
   mmap t =
     let tmt # t := unsafeMArray1 n t
-        _   # t := genFrom' tmt n (f . go) t
+        _   # t := genFrom' tmt n go t
       in tmt # t
     where
       go :  Fin n
-         -> F1 s a
+         -> F1 s b
       go x t =
         let x' # t := get r x t
-          in x' # t
+            x''    := f x'
+          in x'' # t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities

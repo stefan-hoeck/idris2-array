@@ -231,7 +231,7 @@ parameters {n : Nat}
 --------------------------------------------------------------------------------
 
 parameters {n : Nat}
-           (f : F1 s Bits8 -> F1 s Bits8)
+           (f : Bits8 -> Bits8)
            (r : MBuffer s n)
 
   ||| Apply a function `f` to each element of the mutable buffer.
@@ -239,11 +239,12 @@ parameters {n : Nat}
   mmap : F1 s (MBuffer s n)
   mmap t =
     let tmt # t := mbuffer1 n t
-        _   # t := genFrom' tmt n (f . go) t
+        _   # t := genFrom' tmt n go t
       in tmt # t
     where
       go :  Fin n
          -> F1 s Bits8
       go x t =
         let x' # t := get r x t
-          in x' # t
+            x''    := f x'
+          in x'' # t
