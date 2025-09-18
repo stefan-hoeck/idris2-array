@@ -317,8 +317,8 @@ parameters {n : Nat}
       go :  (m, x : Nat)
          -> (q : MArray s n a)
          -> {auto v : Ix x n}
-         -> {auto 0 prf : LTE m $ ixToNat v}
-         -> {auto 0 prf' : LTE x n}
+         -> {auto 0 _ : LTE m $ ixToNat v}
+         -> {auto 0 _ : LTE x n}
          -> F1 s (MArray s n a)
       go m Z     q t =
         q # t
