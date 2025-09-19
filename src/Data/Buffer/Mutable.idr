@@ -258,7 +258,7 @@ parameters {n : Nat}
   mmap : F1 s (MBuffer s n)
   mmap t = mmap1 go r t
     where
-      go :  Bits8 
+      go :  Bits8
          -> F1 s Bits8
       go x t =
         f x # t
