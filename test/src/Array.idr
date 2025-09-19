@@ -134,6 +134,15 @@ prop_mfilter = property $ do
          z            # t := freeze r t
        in A rsize z # t ) === x'
 
+prop_mreverse : Property
+prop_mreverse = property $ do
+  vs  <- forAll arrBits
+  ( run1 $ \t =>
+     let x'   # t := thaw vs.arr t
+         x''  # t := mreverse x' t
+         x''' # t := freeze x'' t
+       in toList x''' # t ) === reverse (toList vs)
+
 prop_drop : Property
 prop_drop = property $ do
   vs <- forAll arrBits
@@ -259,6 +268,7 @@ props = MkGroup "Array"
   , ("prop_iterate", prop_iterate)
   , ("prop_filter", prop_filter)
   , ("prop_mfilter", prop_mfilter)
+  , ("prop_mreverse", prop_mreverse)
   , ("prop_drop", prop_drop)
   , ("prop_mdrop", prop_mdrop)
   , ("prop_mapMaybe", prop_mapMaybe)

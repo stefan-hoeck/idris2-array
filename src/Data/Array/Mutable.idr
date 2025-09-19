@@ -301,6 +301,32 @@ parameters {n : Nat}
           in x' # t
 
 --------------------------------------------------------------------------------
+--          Reversing Arrays
+--------------------------------------------------------------------------------
+
+parameters {n : Nat}
+           (p : MArray s n a)
+
+  ||| Reverse the order of elements in a mutable array.
+  export
+  mreverse : F1 s (MArray s n a)
+  mreverse t =
+    let trt # t := unsafeMArray1 n t
+     in go n trt t
+    where
+      go :  (x : Nat)
+         -> (q : MArray s n a)
+         -> {auto v : Ix x n}
+         -> {auto 0 _ : LTE x n}
+         -> F1 s (MArray s n a)
+      go Z     q t =
+        q # t
+      go (S j) q t =
+        let j' # t := getIx p j t
+            () # t := setNat q j j' t
+          in go j q t
+
+--------------------------------------------------------------------------------
 --          Linear Utilities
 --------------------------------------------------------------------------------
 
