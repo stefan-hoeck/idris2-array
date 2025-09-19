@@ -312,20 +312,19 @@ parameters {n : Nat}
   mreverse : F1 s (MArray s n a)
   mreverse t =
     let trt # t := unsafeMArray1 n t
-     in go 0 n trt t
+     in go n trt t
     where
-      go :  (m, x : Nat)
+      go :  (x : Nat)
          -> (q : MArray s n a)
          -> {auto v : Ix x n}
-         -> {auto 0 _ : LTE m $ ixToNat v}
          -> {auto 0 _ : LTE x n}
          -> F1 s (MArray s n a)
-      go m Z     q t =
+      go Z     q t =
         q # t
-      go m (S j) q t =
+      go (S j) q t =
         let j' # t := getIx p j t
             () # t := setNat q j j' t
-          in go (S m) j q t
+          in go j q t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
