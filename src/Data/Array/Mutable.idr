@@ -282,38 +282,31 @@ parameters {n : Nat}
 --          Maps and Folds
 --------------------------------------------------------------------------------
 
-parameters {n : Nat}
-           (f : a -> F1 s b)
-           (r : MArray s n a)
+||| Apply a function `f` to each element of the mutable array.
+export
+mmap1 :  {n : Nat}
+      -> (f : a -> F1 s b)
+      -> (r : MArray s n a)
+      -> F1 s (MArray s n b)
+mmap1 f r t =
+  let tmt # t := unsafeMArray1 n t
+      _   # t := genFrom' tmt n go t
+    in tmt # t
+  where
+    go :  Fin n
+       -> F1 s b
+    go x t =
+      let x'  # t := get r x t
+          x'' # t := f x' t
+        in x'' # t
 
-  ||| Apply a function `f` to each element of the mutable array.
-  export
-  mmap1 : F1 s (MArray s n b)
-  mmap1 t =
-    let tmt # t := unsafeMArray1 n t
-        _   # t := genFrom' tmt n go t
-      in tmt # t
-    where
-      go :  Fin n
-         -> F1 s b
-      go x t =
-        let x'  # t := get r x t
-            x'' # t := f x' t
-          in x'' # t
-
-parameters {n : Nat}
-           (f : a -> b)
-           (r : MArray s n a)
-
-  ||| Apply a function `f` to each element of the mutable array.
-  export
-  mmap : F1 s (MArray s n b)
-  mmap t = mmap1 go r t
-    where
-      go :  a
-         -> F1 s b
-      go x t =
-        f x # t
+||| Apply a function `f` to each element of the mutable array.
+export
+mmap :  {n : Nat}
+     -> (f : a -> b)
+     -> (r : MArray s n a)
+     -> F1 s (MArray s n b)
+mmap f r t = mmap1 (\x => pure (f x)) r t
 
 --------------------------------------------------------------------------------
 --          Reversing Arrays
