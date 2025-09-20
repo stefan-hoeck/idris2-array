@@ -262,3 +262,29 @@ parameters {n : Nat}
          -> F1 s Bits8
       go x t =
         f x # t
+
+--------------------------------------------------------------------------------
+--          Reversing Buffers
+--------------------------------------------------------------------------------
+
+parameters {n : Nat}
+           (p : MBuffer s n)
+
+  ||| Reverse the order of elements in a mutable buffer.
+  export
+  mreverse : F1 s (MBuffer s n)
+  mreverse t =
+    let trt # t := mbuffer1 n t
+     in go n trt t
+    where
+      go :  (x : Nat)
+         -> (q : MBuffer s n)
+         -> {auto v : Ix x n}
+         -> {auto 0 _ : LTE x n}
+         -> F1 s (MBuffer s n)
+      go Z     q t =
+        q # t
+      go (S j) q t =
+        let j' # t := getIx p j t
+            () # t := setNat q j j' t
+          in go j q t
