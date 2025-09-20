@@ -6,6 +6,8 @@ import public Data.Linear.Token
 import Data.List
 import Data.Vect
 
+import Syntax.T1
+
 %default total
 
 --------------------------------------------------------------------------------
@@ -230,23 +232,31 @@ parameters {n : Nat}
 --          Maps and Folds
 --------------------------------------------------------------------------------
 
-parameters {n : Nat}
-           (f : F1 s Bits8 -> F1 s Bits8)
-           (r : MBuffer s n)
+||| Apply a function `f` to each element of the mutable buffer.
+export
+mmap1 :  {n : Nat}
+      -> (f : Bits8 -> F1 s Bits8)
+      -> (r : MBuffer s n)
+      -> F1 s (MBuffer s n)
+mmap1 f r t =
+  let tmt # t := mbuffer1 n t
+      _   # t := genFrom' tmt n go t
+    in tmt # t
+  where
+    go :  Fin n
+       -> F1 s Bits8
+    go x t =
+      let x'  # t := get r x t
+          x'' # t := f x' t
+        in x'' # t
 
-  ||| Apply a function `f` to each element of the mutable buffer.
-  export
-  mmap : F1 s (MBuffer s n)
-  mmap t =
-    let tmt # t := mbuffer1 n t
-        _   # t := genFrom' tmt n (f . go) t
-      in tmt # t
-    where
-      go :  Fin n
-         -> F1 s Bits8
-      go x t =
-        let x' # t := get r x t
-          in x' # t
+||| Apply a function `f` to each element of the mutable buffer.
+export
+mmap :  {n : Nat}
+     -> (f : Bits8 -> Bits8)
+     -> (r : MBuffer s n)
+     -> F1 s (MBuffer s n)
+mmap f r t = mmap1 (\x => pure (f x)) r t
 
 --------------------------------------------------------------------------------
 --          Reversing Buffers
