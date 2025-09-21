@@ -54,6 +54,11 @@ export
 prim__copy : (src : Buffer) -> (srcOffset, len : Integer) ->
              (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
 
+export
+%foreign "scheme,chez:(lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (let* ((src-idx (fx+ o1 i)) (dst-idx (fx+ o2 i)) (new (bytevector-u8-ref b1 src-idx))) (let loop-cas () (let ((old (bytevector-u8-ref b2 dst-idx))) (unless (eqv? old (bytevector-u8-set! b2 dst-idx new)) (loop-cas)))) (go (fx+ i 1))))))) (go 0)))"
+prim__casCopy : (src : Buffer) -> (srcOffset, len : Integer) ->
+                (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
+
 --------------------------------------------------------------------------------
 --          Immutable Buffers
 --------------------------------------------------------------------------------
@@ -240,6 +245,23 @@ icopy :
   -> (r         : MBuffer s n)
   -> F1' s
 icopy (IB src) = copy {m} (MB src)
+
+||| Atomically copies elements from source bytevector `src` (starting at offset `srcOffset`)
+||| into destination bytevector `dst` (starting at offset `dstOffset`) for `len` elements.
+||| Each element is written using a retrying custom compare-and-swap
+||| ensuring that every slot in the destination is eventually updated even under
+||| concurrent modification.
+export %noinline
+casCopy :
+     MBuffer s m
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MBuffer s n)
+  -> F1' s
+casCopy (MB src) srcOffset dstOffset len (MB dst) =
+  ffi (prim__casCopy src (cast srcOffset) (cast len) dst (cast dstOffset))
 
 ||| Extracts an immutable sub-array from a mutable byte array.
 export %inline

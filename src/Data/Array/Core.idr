@@ -64,6 +64,11 @@ prim__copyArray : (src : AnyPtr) -> (srcOffset, len : Integer) ->
                   (dst : AnyPtr) -> (dstOffset : Integer) -> PrimIO ()
 
 export
+%foreign "scheme,chez: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (let* ((src-idx (fx+ o1 i)) (dst-idx (fx+ o2 i)) (new (vector-ref b1 src-idx))) (let loop-cas () (let ((old (vector-ref b2 dst-idx))) (unless (vector-cas! b2 dst-idx old new) (loop-cas)))) (go (fx+ i 1))))))) (go 0)))"
+prim__casCopyArray : (src : AnyPtr) -> (srcOffset, len : Integer) ->
+                     (dst : AnyPtr) -> (dstOffset : Integer) -> PrimIO ()
+
+export
 %foreign "scheme: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (+ o2 i) (bytevector-u8-ref b1 (+ o1 i))) (go (+ 1 i))))))) (go 0)))"
          "scheme,chez: (lambda (b1 o1 len b2 o2) (letrec ((go (lambda (i) (when (< i len) (begin (vector-set! b2 (fx+ o2 i) (bytevector-u8-ref b1 (fx+ o1 i))) (go (fx+ 1 i))))))) (go 0)))"
          "javascript:lambda:(b1,bo1,blen,b2,bo2,t)=> {const o1 = Number(bo1); const len = Number(blen); const o2 = Number(bo2); for (let i = 0; i < len; i++) {b2[o2+i] = b1[o1+i];}; return t}"
@@ -304,6 +309,23 @@ icopyToArray :
   -> (r         : MArray s n Bits8)
   -> F1' s
 icopyToArray buf = copyToArray {m} (unsafeMBuffer $ unsafeGetBuffer buf)
+
+||| Atomically copies elements from source vector `src` (starting at offset `srcOffset`)
+||| into destination vector `dst` (starting at offset `dstOffset`) for `len` elements.
+||| Each element is written using a retrying compare-and-swap (`vector-cas!`),
+||| ensuring that every slot in the destination is eventually updated even under
+||| concurrent modification.
+export
+casCopy :
+     MArray s m a
+  -> (srcOffset,dstOffset : Nat)
+  -> (len : Nat)
+  -> {auto 0 p1 : LTE (srcOffset + len) m}
+  -> {auto 0 p2 : LTE (dstOffset + len) n}
+  -> (r         : MArray s n a)
+  -> F1' s
+casCopy (MA src) srcOffset dstOffset len (MA dst) =
+  ffi (prim__casCopyArray src (cast srcOffset) (cast len) dst (cast dstOffset))
 
 ||| Copy the content of an immutable array to a new mutable array.
 export

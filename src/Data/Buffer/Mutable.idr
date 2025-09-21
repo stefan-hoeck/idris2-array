@@ -178,6 +178,16 @@ parameters {m, n : Nat}
         _   # t := copy q 0 m n @{reflexive} tgt t
       in tgt # t
 
+  ||| Allocates a new mutable byte array and atomically adds the elements from `p`
+  ||| at its beginning, followed by atomically adding the elements from `q`.
+  export
+  casmappend : F1 s (MBuffer s (m+n))
+  casmappend t =
+    let tgt # t := mbuffer1 (m+n) t
+        _   # t := casCopy p 0 0 m @{reflexive} @{lteAddRight m} tgt t
+        _   # t := casCopy q 0 m n @{reflexive} tgt t
+      in tgt # t
+
 --------------------------------------------------------------------------------
 --          Sub-Buffers
 --------------------------------------------------------------------------------
