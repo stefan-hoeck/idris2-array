@@ -38,6 +38,7 @@ module Data.Array.Index
 import Data.So
 import public Data.DPair
 import public Data.Fin
+import public Data.Maybe0
 import public Data.Nat
 
 %default total
@@ -225,10 +226,15 @@ eqOpReflectsEquals (S k) 0     prf impossible
 --------------------------------------------------------------------------------
 
 export
-0 tryLTE : {n : _} -> (k : Nat) -> Maybe (LT k n)
-tryLTE k with (k < n) proof eq
-  _ | True  = Just $ ltOpReflectsLT k n eq
-  _ | False = Nothing
+tryLT : {n : _} -> (k : Nat) -> Maybe0 (LT k n)
+tryLT k with (k < n) proof eq
+  _ | True  = Just0 $ ltOpReflectsLT k n eq
+  _ | False = Nothing0
+
+export
+tryLTE : {n : _} -> (k : Nat) -> Maybe0 (LTE k n)
+tryLTE 0     = Just0 %search
+tryLTE (S k) = tryLT k
 
 ||| Tries to convert a natural number to a `Fin k`.
 export
