@@ -313,6 +313,14 @@ thaw src t =
         _ # t := icopy src 0 0 n @{reflexive} @{reflexive} r t
      in r # t
 
+||| Make the content of an immutable array accessible as a mutable array.
+|||
+||| This is obviously unsafe. Don't use if you don't know exactly what you
+||| are doing.
+export
+unsafeThaw : IArray n a -> MArray s n a
+unsafeThaw (IA arr) = MA arr
+
 --------------------------------------------------------------------------------
 -- Allocating Arrays
 --------------------------------------------------------------------------------

@@ -239,13 +239,12 @@ curLTE s lte = transitive lte $ ixLTE s
 curLT s lte = let LTESucc p := ixLT s in LTESucc $ transitive lte p
 
 parameters {n : Nat}
-           (f : a -> Bool)
            (p : MArray s n a)
 
   ||| Filters the values in a mutable array according to the given predicate.
   export
-  mfilter : F1 s (m ** MArray s m a)
-  mfilter t =
+  mfilterWithKey : (Fin n -> a -> Bool) -> F1 s (m ** MArray s m a)
+  mfilterWithKey f t =
     let tft # t := unsafeMArray1 n t
      in go 0 n tft t
     where
@@ -259,12 +258,39 @@ parameters {n : Nat}
          in (m ** q') # t
       go m (S j) q t =
         let j' # t := getIx p j t
-         in case f j' of
+         in case f (ixToFin v) j' of
               True  =>
                 let () # t := setNat q m @{curLT v prf} j' t
                  in go (S m) j q t
-              False =>
-                go m j q t
+              False => go m j q t
+
+  ||| Filters the values in a mutable array according to the given predicate.
+  export %inline
+  mfilter : (a -> Bool) -> F1 s (m ** MArray s m a)
+  mfilter = mfilterWithKey . const
+
+  ||| Filters the values in a mutable array according to the given predicate.
+  export
+  mmapMaybeWithKey : (Fin n -> a -> Maybe b) -> F1 s (m ** MArray s m b)
+  mmapMaybeWithKey f t =
+    let tft # t := unsafeMArray1 n t
+     in go 0 n tft t
+    where
+      go :  (m, x : Nat)
+         -> (q : MArray s n b)
+         -> {auto v : Ix x n}
+         -> {auto 0 prf : LTE m $ ixToNat v}
+         -> F1 s (m ** MArray s m b)
+      go m Z     q t =
+        let q' # t := mtake q m @{curLTE v prf} t
+         in (m ** q') # t
+      go m (S j) q t =
+        let j' # t := getIx p j t
+         in case f (ixToFin v) j' of
+              Just y =>
+                let () # t := setNat q m @{curLT v prf} y t
+                 in go (S m) j q t
+              Nothing => go m j q t
 
 parameters {n : Nat}
            (m : Nat)
@@ -282,64 +308,80 @@ parameters {n : Nat}
 --          Maps and Folds
 --------------------------------------------------------------------------------
 
+||| Apply an effectful function `f` to each element of the mutable array.
+|||
+||| Unlike `mmap1` and `mmap`, this function performs inplace mutation.
+export
+mupdate1 :  {n : _} -> (f : a -> F1 s a) -> MArray s n a -> F1' s
+mupdate1 f r = go n
+  where
+    go :  (k: Nat) -> (x : Ix k n) => F1' s
+    go 0     t = () # t
+    go (S k) t =
+     let v  # t := getIx r k t
+         v2 # t := f v t
+         _  # t := setIx r k v2 t
+      in go k t
+
+||| Apply a function `f` to each element of the mutable array.
+|||
+||| Unlike `mmap1` and `mmap`, this function performs inplace mutation.
+export
+mupdate :  {n : _} -> (f : a -> a) -> MArray s n a -> F1' s
+mupdate f r = go n
+  where
+    go :  (k: Nat) -> (0 lt : LTE k n) => F1' s
+    go 0     t = () # t
+    go (S k) t =
+     let v  # t := getNat r k t
+         _  # t := setNat r k (f v) t
+      in go k t
+
 ||| Apply a function `f` to each element of the mutable array.
 export
-mmap1 :  {n : Nat}
-      -> (f : a -> F1 s b)
-      -> (r : MArray s n a)
-      -> F1 s (MArray s n b)
+mmap1 :  {n : _} -> (f : a -> F1 s b) -> MArray s n a -> F1 s (MArray s n b)
 mmap1 f r t =
   let tmt # t := unsafeMArray1 n t
       _   # t := genFrom' tmt n go t
     in tmt # t
   where
-    go :  Fin n
-       -> F1 s b
-    go x t =
-      let x'  # t := get r x t
-          x'' # t := f x' t
-        in x'' # t
+    go :  Fin n -> F1 s b
+    go x t = let x'  # t := get r x t in f x' t
 
 ||| Apply a function `f` to each element of the mutable array.
-export
-mmap :  {n : Nat}
-     -> (f : a -> b)
-     -> (r : MArray s n a)
-     -> F1 s (MArray s n b)
-mmap f r t = mmap1 (\x => pure (f x)) r t
+export %inline
+mmap :  {n : _} -> (f : a -> b) -> MArray s n a -> F1 s (MArray s n b)
+mmap f = mmap1 (pure . f)
 
 --------------------------------------------------------------------------------
 --          Reversing Arrays
 --------------------------------------------------------------------------------
 
-parameters {n : Nat}
-           (p : MArray s n a)
+parameters {k : Nat}
+           (r : MArray s k a)
 
   ||| Reverse the order of elements in a mutable array.
   export
-  mreverse : F1 s (MArray s n a)
+  mreverse : F1 s (MArray s k a)
   mreverse t =
-    let trt # t := unsafeMArray1 n t
-     in go n trt t
+    let trt # t := unsafeMArray1 k t
+     in go k trt t
     where
       go :  (x : Nat)
-         -> (q : MArray s n a)
-         -> {auto v : Ix x n}
-         -> {auto 0 _ : LTE x n}
-         -> F1 s (MArray s n a)
+         -> (q : MArray s k a)
+         -> {auto v : Ix x k}
+         -> {auto 0 _ : LTE x k}
+         -> F1 s (MArray s k a)
       go Z     q t =
         q # t
       go (S j) q t =
-        let j' # t := getIx p j t
+        let j' # t := getIx r j t
             () # t := setNat q j j' t
           in go j q t
 
 --------------------------------------------------------------------------------
 --          Linear Utilities
 --------------------------------------------------------------------------------
-
-parameters {k : Nat}
-           (r : MArray s k a)
 
   ||| Accumulate the values stored in a mutable array.
   export
