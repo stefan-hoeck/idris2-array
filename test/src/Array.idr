@@ -8,6 +8,7 @@ import Data.List.Quantifiers
 import Data.SnocList
 import Data.Vect
 import Hedgehog
+import Syntax.T1
 
 %default total
 
@@ -76,6 +77,24 @@ prop_mmap_id = property $ do
          z    # t := freeze x''' t
        in A vs.size z # t ) === map id vs
 
+prop_mupdate1 : Property
+prop_mupdate1 = property $ do
+  vs <- forAll arrBits
+  ( run1 $ \t =>
+     let x'' # t := thaw vs.arr t
+         _   # t := mupdate1 (pure . (*2)) x'' t
+         z   # t := freeze x'' t
+       in A vs.size z # t ) === map (*2) vs
+
+prop_mupdate : Property
+prop_mupdate = property $ do
+  vs <- forAll arrBits
+  ( run1 $ \t =>
+     let x'' # t := thaw vs.arr t
+         _   # t := mupdate (*2) x'' t
+         z   # t := freeze x'' t
+       in A vs.size z # t ) === map (*2) vs
+
 prop_from_to_list : Property
 prop_from_to_list = property $ do
   vs <- forAll (list (linear 0 10) anyBits8)
@@ -130,7 +149,7 @@ prop_mfilter = property $ do
   let x' = filter (< 10) x.arr
   ( run1 $ \t =>
      let x''          # t := thaw x.arr t
-         (rsize ** r) # t := mfilter (< 10) x'' t
+         (rsize ** r) # t := mfilter x'' (< 10) t
          z            # t := freeze r t
        in A rsize z # t ) === x'
 
@@ -257,6 +276,8 @@ props = MkGroup "Array"
   , ("prop_lte", prop_lte)
   , ("prop_map_id", prop_map_id)
   , ("prop_mmap_id", prop_mmap_id)
+  , ("prop_mupdate1", prop_mupdate1)
+  , ("prop_mupdate", prop_mupdate)
   , ("prop_from_to_list", prop_from_to_list)
   , ("prop_from_to_vect", prop_from_to_vect)
   , ("prop_from_to_rev_vect", prop_from_to_rev_vect)
