@@ -313,23 +313,10 @@ filterWithKey :
   -> (Fin n -> a -> Bool)
   -> IArray n a
   -> Array a
-filterWithKey f arr = unsafeAlloc n (go 0 n)
-
-  where
-    go :
-         (cur,x : Nat)
-      -> {auto v : Ix x n}
-      -> {auto 0 prf : LTE cur $ ixToNat v}
-      -> WithMArray n a (Array a)
-    go cur 0 r = T1.do
-      res <- unsafeFreezeLTE @{curLTE v prf} r cur
-      pure $ A cur res
-    go cur (S j) r =
-      case f (ixToFin v) (ix arr j) of
-        True  => T1.do
-          setNat r cur {lt = curLT v prf} (ix arr j)
-          go (S cur) j r
-        False => go cur j r
+filterWithKey f arr = run1 $ T1.do
+  (n ** m) <- mfilterWithKey (unsafeThaw arr) f
+  res      <- unsafeFreeze m
+  pure (A n res)
 
 ||| Filters the values in an immutable array according to the given predicate.
 export %inline
@@ -344,23 +331,10 @@ mapMaybeWithKey :
   -> (Fin n -> a -> Maybe b)
   -> IArray n a
   -> Array b
-mapMaybeWithKey f arr = unsafeAlloc n (go 0 n)
-
-  where
-    go :
-         (cur,x : Nat)
-      -> {auto v : Ix x n}
-      -> {auto 0 prf : LTE cur $ ixToNat v}
-      -> WithMArray n b (Array b)
-    go cur 0 r = T1.do
-      res <- unsafeFreezeLTE @{curLTE v prf} r cur
-      pure $ A cur res
-    go cur (S j) r =
-      case f (ixToFin v) (ix arr j) of
-        Just vb => T1.do
-          setNat r cur {lt = curLT v prf} vb
-          go (S cur) j r
-        Nothing => go cur j r
+mapMaybeWithKey f arr = run1 $ T1.do
+  (n ** m) <- mmapMaybeWithKey (unsafeThaw arr) f
+  res      <- unsafeFreeze m
+  pure (A n res)
 
 ||| Map the values in an immutable array together with their corresponding indices
 ||| over a function that might not return a result for all values.
