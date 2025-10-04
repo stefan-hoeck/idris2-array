@@ -479,3 +479,14 @@ export %inline
 export %inline
 {n : _} -> Traversable1 (IArray n) where
   traverse1 f arr = unsafeMArray1 n >>= tr1A arr n f
+
+export %inline
+Foldable1 Array where
+  foldl1     f x (A n arr) = foldl1A arr n f x
+  foldr1     f x (A n arr) = foldr1A arr n f x
+  foldMap1   f   (A n arr) = fm1A arr n f neutral
+  traverse1_ f   (A n arr) = tr1A_ arr n f
+
+export %inline
+Traversable1 Array where
+  traverse1 f (A n arr) t = let a # t := traverse1 f arr t in A n a # t
