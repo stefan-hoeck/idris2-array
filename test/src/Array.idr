@@ -3,6 +3,8 @@ module Array
 import Control.Monad.Identity
 import Data.Array
 import Data.Array.Mutable
+import Data.Linear.Ref1
+import Data.Linear.Traverse1
 import Data.List
 import Data.List.Quantifiers
 import Data.SnocList
@@ -115,10 +117,48 @@ prop_foldl = property $ do
   vs <- forAll arrBits
   foldl (:<) [<] vs === foldl (:<) [<] (toList vs)
 
+prop_foldl1 : Property
+prop_foldl1 = property $ do
+  vs <- forAll arrBits
+  run1 (foldl1 (\x,y,t => (x:<y) # t) [<] vs) === foldl (:<) [<] (toList vs)
+
 prop_foldr : Property
 prop_foldr = property $ do
   vs <- forAll arrBits
   foldr (::) Prelude.Nil vs === foldr (::) [] (toList vs)
+
+prop_foldr1 : Property
+prop_foldr1 = property $ do
+  vs <- forAll arrBits
+  run1 (foldr1 (\x,y,t => (x::y) # t) [] vs) === foldr (::) [] (toList vs)
+
+prop_foldMap : Property
+prop_foldMap = property $ do
+  vs <- forAll arrBits
+  foldMap pure vs === toList vs
+
+prop_foldMap1 : Property
+prop_foldMap1 = property $ do
+  vs <- forAll arrBits
+  run1 (foldMap1 (\x,t => [x] # t) vs) === toList vs
+
+prop_traverse1_ : Property
+prop_traverse1_ = property $ do
+  vs <- forAll arrBits
+  run1 (go vs) === toList vs
+
+  where
+    go : Array Bits8 -> F1 s (List Bits8)
+    go arr t =
+     let ref # t := ref1 [<] t
+         _   # t := traverse1_ (\x => mod1 ref (:< x)) arr t
+         vs  # t := read1 ref t
+      in (vs <>> []) # t
+
+prop_traverse1 : Property
+prop_traverse1 = property $ do
+  vs <- forAll arrBits
+  run1 (traverse1 (\x,t => (2*x) # t) vs) === map (2*) vs
 
 prop_null : Property
 prop_null = property $ do
@@ -282,7 +322,13 @@ props = MkGroup "Array"
   , ("prop_from_to_vect", prop_from_to_vect)
   , ("prop_from_to_rev_vect", prop_from_to_rev_vect)
   , ("prop_foldl", prop_foldl)
+  , ("prop_foldl1", prop_foldl1)
   , ("prop_foldr", prop_foldr)
+  , ("prop_foldr1", prop_foldr1)
+  , ("prop_foldMap", prop_foldMap)
+  , ("prop_foldMap1", prop_foldMap1)
+  , ("prop_traverse1_", prop_traverse1_)
+  , ("prop_traverse1", prop_traverse1)
   , ("prop_null", prop_null)
   , ("prop_size", prop_size)
   , ("prop_generate", prop_generate)

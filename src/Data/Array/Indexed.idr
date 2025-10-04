@@ -3,6 +3,7 @@ module Data.Array.Indexed
 import Data.Array.Mutable
 import Data.List
 import Data.Vect
+import Data.Linear.Traverse1
 import Syntax.PreorderReasoning
 import Syntax.T1
 
@@ -403,3 +404,63 @@ append src1 src2 =
     let _ # t := icopy {n = m+n} src1 0 0 m @{reflexive} @{lteAddRight _} r t
         _ # t := icopy src2 0 m n @{reflexive} @{reflexive} r t
      in unsafeFreeze r t
+
+--------------------------------------------------------------------------------
+--          Linear Folds and Traversals
+--------------------------------------------------------------------------------
+
+parameters (arr : IArray n e)
+
+  foldl1A : (k : Nat) -> Ix k n => (a -> e -> F1 s a) -> a -> F1 s a
+  foldl1A 0     f x t = x # t
+  foldl1A (S k) f x t = let y # t := f x (arr `ix` k) t in foldl1A k f y t
+
+  foldr1A : (k : Nat) -> (0 p : LTE k n) => (e -> a -> F1 s a) -> a -> F1 s a
+  foldr1A 0     f x t = x # t
+  foldr1A (S k) f x t = let y # t := f (arr `atNat` k) x t in foldr1A k f y t
+
+  fm1A : Semigroup a => (k : Nat) -> (0 p : LTE k n) => (e -> F1 s a) -> a -> F1 s a
+  fm1A 0     f x t = x # t
+  fm1A (S k) f x t = let y # t := f (arr `atNat` k) t in fm1A k f (y<+>x) t
+
+  tr1A_ : (k : Nat) -> Ix k n => (e -> F1' s) -> F1' s
+  tr1A_ 0     f t = () # t
+  tr1A_ (S k) f t = let _ # t := f (arr `ix` k) t in tr1A_ k f t
+
+  tr1A : (k : Nat) -> Ix k n => (e -> F1 s b) -> MArray s n b -> F1 s (IArray n b)
+  tr1A 0     f m t = unsafeFreeze m t
+  tr1A (S k) f m t =
+   let y # t := f (arr `ix` k) t
+       _ # t := setIx m k y t
+    in tr1A k f m t
+
+||| Runs a linear effect over the values plus their indices in an array.
+export
+traverseKV1_ : {n : _} -> (Fin n -> a -> F1' q) -> IArray n a -> F1' q
+traverseKV1_ f arr = go n
+  where
+    go : (k : Nat) -> (x : Ix k n) => F1' q
+    go 0     t = () # t
+    go (S k) t = let _ # t := f (ixToFin x) (arr `ix` k) t in go k t
+
+export %inline
+{n : _} -> Foldable1 (IArray n) where
+  foldl1     f x arr = foldl1A arr n f x
+  foldr1     f x arr = foldr1A arr n f x
+  foldMap1   f   arr = fm1A arr n f neutral
+  traverse1_ f   arr = tr1A_ arr n f
+
+export %inline
+{n : _} -> Traversable1 (IArray n) where
+  traverse1 f arr = unsafeMArray1 n >>= tr1A arr n f
+
+export %inline
+Foldable1 Array where
+  foldl1     f x (A n arr) = foldl1A arr n f x
+  foldr1     f x (A n arr) = foldr1A arr n f x
+  foldMap1   f   (A n arr) = fm1A arr n f neutral
+  traverse1_ f   (A n arr) = tr1A_ arr n f
+
+export %inline
+Traversable1 Array where
+  traverse1 f (A n arr) t = let a # t := traverse1 f arr t in A n a # t
