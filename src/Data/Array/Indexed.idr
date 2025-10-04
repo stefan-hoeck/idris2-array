@@ -460,6 +460,15 @@ parameters (arr : IArray n e)
        _ # t := setIx m k y t
     in tr1A k f m t
 
+||| Runs a linear effect over the values plus their indices in an array.
+export
+traverseKV1_ : {n : _} -> (Fin n -> a -> F1' q) -> IArray n a -> F1' q
+traverseKV1_ f arr = go n
+  where
+    go : (k : Nat) -> (x : Ix k n) => F1' q
+    go 0     t = () # t
+    go (S k) t = let _ # t := f (ixToFin x) (arr `ix` k) t in go k t
+
 export %inline
 {n : _} -> Foldable1 (IArray n) where
   foldl1     f x arr = foldl1A arr n f x
