@@ -3,6 +3,7 @@ module Array
 import Control.Monad.Identity
 import Data.Array
 import Data.Array.Mutable
+import Data.Linear.Ref1
 import Data.Linear.Traverse1
 import Data.List
 import Data.List.Quantifiers
@@ -121,6 +122,24 @@ prop_foldMap1 : Property
 prop_foldMap1 = property $ do
   vs <- forAll arrBits
   run1 (foldMap1 (\x,t => [x] # t) vs) === toList vs
+
+prop_traverse1_ : Property
+prop_traverse1_ = property $ do
+  vs <- forAll arrBits
+  run1 (go vs) === toList vs
+
+  where
+    go : Array Bits8 -> F1 s (List Bits8)
+    go arr t =
+     let ref # t := ref1 [<] t
+         _   # t := traverse1_ (\x => mod1 ref (:< x)) arr t
+         vs  # t := read1 ref t
+      in (vs <>> []) # t
+
+prop_traverse1 : Property
+prop_traverse1 = property $ do
+  vs <- forAll arrBits
+  run1 (traverse1 (\x,t => (2*x) # t) vs) === map (2*) vs
 
 prop_null : Property
 prop_null = property $ do
@@ -278,6 +297,8 @@ props = MkGroup "Array"
   , ("prop_foldr1", prop_foldr1)
   , ("prop_foldMap", prop_foldMap)
   , ("prop_foldMap1", prop_foldMap1)
+  , ("prop_traverse1_", prop_traverse1_)
+  , ("prop_traverse1", prop_traverse1)
   , ("prop_null", prop_null)
   , ("prop_size", prop_size)
   , ("prop_generate", prop_generate)
