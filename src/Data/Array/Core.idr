@@ -77,6 +77,10 @@ export
 prim__arrToBuf : (src : AnyPtr) -> (srcOffset, len : Integer) ->
                  (dst : Buffer) -> (dstOffset : Integer) -> PrimIO ()
 
+export
+%foreign "javascript:lambda:(x,t)=> x.length"
+prim__jsArrLength : AnyPtr -> PrimIO Bits32
+
 --------------------------------------------------------------------------------
 --          Immutable Arrays
 --------------------------------------------------------------------------------
@@ -411,3 +415,24 @@ toIArray buf =
   alloc n (the Bits8 0) $ \arr,t =>
    let _ # t := icopyToArray buf 0 0 n arr t
     in unsafeFreeze arr t
+
+--------------------------------------------------------------------------------
+-- Arrays from the FFI
+--------------------------------------------------------------------------------
+
+||| Utility for wrapping an array result from the FFI in a proper
+||| Idris array.
+|||
+||| Since we are wrapping a raw pointer, this is obviously an unsafe
+||| operation and client code is responsible to make sure that the pointer
+||| actually corresponds to a JS array or array-like.
+export
+unsafeJSMArrayOf1 : (0 a : Type) -> AnyPtr -> F1 s (n ** MArray s n a)
+unsafeJSMArrayOf1 a ptr t =
+ let len # t := ffi (prim__jsArrLength ptr) t
+  in (cast len ** MA ptr) # t
+
+||| Like `unsafeJSMArrayOf1` but runs in an `IO` monad.
+export %inline
+unsafeJSMArrayOf : HasIO io => (0 a : Type) -> AnyPtr -> io (n ** IOArray n a)
+unsafeJSMArrayOf a ptr = runIO (unsafeJSMArrayOf1 a ptr)

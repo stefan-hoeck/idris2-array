@@ -99,6 +99,37 @@ fromPairs n v ps = alloc n v (go ps)
         Just y  => T1.do set r y v; go xs r
         Nothing => go xs r
 
+||| Wraps a pointer to a mutable JS array in an immutable array
+||| by copying the values first.
+|||
+||| Use this for wrapping arrays that can still be mutated in JS land, or if
+||| you are uncertain about whether the pointer points to a mutable array or
+||| not. The array will first be copied before being wrapped in an `Array a`.
+export
+unsafeJSArrayOf1 : (0 a : Type) -> AnyPtr -> F1 s (Array a)
+unsafeJSArrayOf1 a ptr t =
+ let (n ** marr) # t := unsafeJSMArrayOf1 a ptr t
+     iarr        # t := freeze marr t
+  in  A n iarr # t
+
+||| Like `unsafeJSArrayOf1` but runs in an `IO` monad.
+export
+unsafeJSArrayOf : HasIO io => (0 a : Type) -> AnyPtr -> io (Array a)
+unsafeJSArrayOf a ptr = runIO (unsafeJSArrayOf1 a ptr)
+
+||| Like `unsafeJSArrayOf1` but wraps the pointer without copying
+||| it first.
+|||
+||| Use this only if the pointer points to an array that cannot be
+||| inadvertently mutated later on.
+export
+unsafeWrapJSArray : (0 a : Type) -> AnyPtr -> Array a
+unsafeWrapJSArray a ptr =
+  run1 $ \t =>
+   let (n ** marr) # t := unsafeJSMArrayOf1 a ptr t
+       iarr        # t := unsafeFreeze marr t
+    in  A n iarr # t
+
 --------------------------------------------------------------------------------
 --          Eq and Ord
 --------------------------------------------------------------------------------
