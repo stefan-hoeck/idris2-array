@@ -99,6 +99,15 @@ fromPairs n v ps = alloc n v (go ps)
         Just y  => T1.do set r y v; go xs r
         Nothing => go xs r
 
+||| Like `fromPairs` but with `Fin n` as indices.
+export
+fromFinPairs : (n : Nat) -> a -> List (Fin n,a) -> IArray n a
+fromFinPairs n v ps = alloc n v (go ps)
+  where
+    go : List (Fin n,a) -> WithMArray n a (IArray n a)
+    go []            r = unsafeFreeze r
+    go ((x,v) :: xs) r = T1.do set r x v; go xs r
+
 ||| Wraps a pointer to a mutable JS array in an immutable array
 ||| by copying the values first.
 |||
