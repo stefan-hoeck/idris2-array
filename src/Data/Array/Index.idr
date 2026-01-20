@@ -205,21 +205,21 @@ export
 lteOpReflectsLTE 0     (S k) prf = LTEZero
 lteOpReflectsLTE (S k) (S j) prf = LTESucc (lteOpReflectsLTE k j prf)
 lteOpReflectsLTE 0 0         prf = LTEZero
-lteOpReflectsLTE (S k) 0     prf impossible
+lteOpReflectsLTE (S k) Z     prf impossible
 
 export
 0 ltOpReflectsLT : (m,n : Nat) -> (m < n) === True -> LT m n
 ltOpReflectsLT 0     (S k) prf = LTESucc LTEZero
 ltOpReflectsLT (S k) (S j) prf = LTESucc (ltOpReflectsLT k j prf)
-ltOpReflectsLT 0 0         prf impossible
-ltOpReflectsLT (S k) 0     prf impossible
+ltOpReflectsLT Z Z         prf impossible
+ltOpReflectsLT (S k) Z     prf impossible
 
 export
 0 eqOpReflectsEquals : (m,n : Nat) -> (m == n) === True -> m === n
 eqOpReflectsEquals 0     0     prf = Refl
 eqOpReflectsEquals (S k) (S j) prf = cong S $ eqOpReflectsEquals k j prf
-eqOpReflectsEquals 0     (S k) prf impossible
-eqOpReflectsEquals (S k) 0     prf impossible
+eqOpReflectsEquals Z     (S k) prf impossible
+eqOpReflectsEquals (S k) Z     prf impossible
 
 --------------------------------------------------------------------------------
 --          Proofs
@@ -291,7 +291,7 @@ export
 plusMinus 0 0         _           = Refl
 plusMinus 0 (S k)     x           = Refl
 plusMinus (S k) (S j) (LTESucc p) = cong S $ plusMinus k j p
-plusMinus (S k) 0     x impossible
+plusMinus (S k) Z     x impossible
 
 export
 0 eqLTE : (m,n : Nat) -> m === n -> LTE m n
