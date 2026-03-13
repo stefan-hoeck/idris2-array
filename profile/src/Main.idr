@@ -1,8 +1,12 @@
 module Main
 
+import Data.Array.All
+import Data.Buffer
+import Data.Buffer.Builder as BB
+import Data.String.Builder as SB
 import Data.Linear.Ref1
 import Data.Linear.Token
-import Data.Array.All
+import Data.List
 import Profile
 
 %default total
@@ -42,10 +46,10 @@ mkRefs t =
      b3 # t := ref1 True t
      b4 # t := ref1 True t
      b5 # t := ref1 True t
-     s1 # t := ref1 "foo" t
-     s2 # t := ref1 "foo" t
-     s3 # t := ref1 "foo" t
-     s4 # t := ref1 "foo" t
+     s1 # t := ref1 {a = String} "foo" t
+     s2 # t := ref1 {a = String} "foo" t
+     s3 # t := ref1 {a = String} "foo" t
+     s4 # t := ref1 {a = String} "foo" t
      n1 # t := ref1 Z t
   in R b1 b2 b3 b4 b5 s1 s2 s3 s4 n1 # t
 
@@ -108,12 +112,50 @@ loopAllLst n =
    let arr # t := mall1 [Z,True,True,True,True,"foo","foo","foo","foo",Z] t
     in loopAll10 arr n t
 
+hello : IBuffer ?
+hello = "hello"
+
+buildHello : Nat -> String
+buildHello n = BB.withBuilder (loop n)
+  where
+    loop : {0 q : _} -> BB.Builder q => Nat -> F1 q String
+    loop 0     t = getString t
+    loop (S k) t = let _ # t := BB.put hello t in loop k t
+
+sbuildHello : Nat -> String
+sbuildHello n = SB.withBuilder (loop n)
+  where
+    loop : {0 q : _} -> SB.Builder q => Nat -> F1' q
+    loop 0     t = () # t
+    loop (S k) t = let _ # t := SB.putText "hello" t in loop k t
+
+concatHello : Nat -> String
+concatHello n = fastConcat $ replicate n "hello"
+
 -- This profiles our JSON lexer against the one from parser-json
 -- to know what we are up against.
 bench : Benchmark Void
 bench =
   Group "Loops" [
-    Group "loopRef1" [
+    Group "bytes build hello" [
+      Single "10^4" (basic buildHello 10_000)
+    , Single "10^5" (basic buildHello 100_000)
+    , Single "10^6" (basic buildHello 1_000_000)
+    , Single "10^7" (basic buildHello 10_000_000)
+    ]
+  , Group "string build hello" [
+      Single "10^4" (basic sbuildHello 10_000)
+    , Single "10^5" (basic sbuildHello 100_000)
+    , Single "10^6" (basic sbuildHello 1_000_000)
+    , Single "10^7" (basic sbuildHello 10_000_000)
+    ]
+  , Group "concat hello" [
+      Single "10^4" (basic concatHello 10_000)
+    , Single "10^5" (basic concatHello 100_000)
+    , Single "10^6" (basic concatHello 1_000_000)
+    , Single "10^7" (basic concatHello 10_000_000)
+    ]
+  , Group "loopRef1" [
       Single "10^5" (basic loopRef 100_000)
     , Single "10^6" (basic loopRef 1_000_000)
     , Single "10^7" (basic loopRef 10_000_000)
@@ -162,26 +204,6 @@ bench =
     , Single "10^8" (basic (loop1 0) 100_000_000)
     ]
   ]
---   , Single "long"       (basic lexBS longBS)
---   , Single "extra"      (basic lexBS extraBS)
---   , Single "maxi"       (basic lexBS maxiBS)
---   , Single "ultra"      (basic lexBS ultraBS)
---   , Single "short lex"  (basic lexJSON short)
---   , Single "long lex"   (basic lexJSON long)
---   , Single "extra lex"  (basic lexJSON extra)
---   , Single "maxi lex"   (basic lexJSON maxi)
---   , Single "ultra lex"  (basic lexJSON ultra)
---   , Single "short prs"  (basic (parseJSON Virtual) short)
---   , Single "long prs"   (basic (parseJSON Virtual) long)
---   , Single "extra prs"  (basic (parseJSON Virtual) extra)
---   , Single "maxi prs"   (basic (parseJSON Virtual) maxi)
---   , Single "ultra prs"  (basic (parseJSON Virtual) ultra)
---   , Single "short ctr"  (basic JSON.parse short)
---   , Single "long ctr"   (basic JSON.parse long)
---   , Single "extra ctr"  (basic JSON.parse extra)
---   , Single "maxi ctr"   (basic JSON.parse maxi)
---   , Single "ultra ctr"  (basic JSON.parse ultra)
---   ]
 
 main : IO ()
 main = runDefault (Prelude.const True) Table show bench
