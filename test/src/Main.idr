@@ -4,6 +4,7 @@ import All.Manual
 import All
 import Array.Manual
 import Array
+import Buffer.Builder
 import Buffer.Manual
 import Buffer
 import Index
@@ -18,6 +19,7 @@ main = test
   , Array.Manual.props
   , Array.props
   , Index.props
+  , Buffer.Builder.props
   , Buffer.Manual.props
   , Buffer.props
   ]

@@ -164,6 +164,10 @@ parameters {auto b : Builder q}
     in ffi (prim__putbytes 0 sz (unsafeGetBuffer buf) b.ptr) t
 
   export %inline
+  putAnyBytes : AnyBuffer -> F1' q
+  putAnyBytes (AB _ ib) = putBytes ib
+
+  export %inline
   putString : String -> F1' q
   putString s = putBytes (fromString s)
 
@@ -176,24 +180,20 @@ parameters {auto b : Builder q}
   putMBytes m t = let ib # t := unsafeFreeze m t in putBytes ib t
 
   export
-  getBytes : F1 q (k ** IBuffer k)
+  getBytes : F1 q AnyBuffer
   getBytes t =
     let sz # t := ffi (prim__buildersize b.ptr) t
         buf # t := ffi (prim__builderbytes b.ptr) t
-     in (cast sz ** unsafeMakeBuffer buf) # t
+     in AB (cast sz) (unsafeMakeBuffer buf) # t
 
   export
   getString : F1 q String
-  getString t = let (k ** ib) # t := getBytes t in toString ib 0 k # t
+  getString t = let ab # t := getBytes t in cast ab # t
 
-test : (k ** IBuffer k)
-test =
-  withBuilder $ T1.do
-    putString "hello"
-    putBits8 188
-    putInt8 (-3)
-    putBits8 188
-    putBits8 188
-    putBits8 188
-    putBits64BE 1024
-    getBytes
+export
+fastConcat : List AnyBuffer -> AnyBuffer
+fastConcat bs = withBuilder (go bs)
+  where
+    go : Builder q => List AnyBuffer -> F1 q AnyBuffer
+    go []        t = getBytes t
+    go (x :: xs) t = let _ # t := putAnyBytes x t in go xs t
