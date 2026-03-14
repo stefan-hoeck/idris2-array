@@ -2,6 +2,7 @@ module Data.Buffer.Indexed
 
 import public Data.Array.Index
 import public Data.Array.Indexed
+import Data.Buffer
 import Data.Buffer.Mutable
 import Data.List
 import Data.Vect
@@ -336,3 +337,43 @@ append src1 src2 =
 export
 drop : {n : _} -> (m : Nat) -> IBuffer n -> IBuffer (n `minus` m)
 drop m buf = generate (n `minus` m) (\f => at buf (inc f))
+
+--------------------------------------------------------------------------------
+--          Non-indexed buffers
+--------------------------------------------------------------------------------
+
+export %inline
+Eq AnyBuffer where
+  AB _ b1 == AB _ b2 = heq b1 b2
+
+export %inline
+Ord AnyBuffer where
+  compare (AB _ b1) (AB _ b2) = hcomp b1 b2
+
+export %inline
+Semigroup AnyBuffer where
+  AB _ b1 <+> AB _ b2 = AB _ $ append b1 b2
+
+export %inline
+Monoid AnyBuffer where
+  neutral = AB 0 empty
+
+export
+Show AnyBuffer where
+  showPrec p (AB n ib) = showCon p "AB" (showArg n ++ showArg ib)
+
+export %inline
+FromString AnyBuffer where
+  fromString s = AB _ $ fromString s
+
+export %inline
+Cast AnyBuffer String where
+  cast (AB n ib) = toString ib 0 n
+
+export
+pack : List Bits8 -> AnyBuffer
+pack bs = AB _ $ bufferL bs
+
+export
+unpack : AnyBuffer -> List Bits8
+unpack (AB _ b) = toList b

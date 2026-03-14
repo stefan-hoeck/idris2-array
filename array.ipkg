@@ -15,6 +15,7 @@ modules    = Data.Array.All
            , Data.Array.Mutable
            , Data.Array
 
+           , Data.Buffer.Builder
            , Data.Buffer.Core
            , Data.Buffer.Indexed
            , Data.Buffer.Mutable

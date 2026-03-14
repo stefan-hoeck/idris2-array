@@ -113,6 +113,12 @@ export
 unsafeMakeBuffer : Buffer -> IBuffer k
 unsafeMakeBuffer = IB
 
+public export
+record AnyBuffer where
+  constructor AB
+  size : Nat
+  ibuf : IBuffer size
+
 --------------------------------------------------------------------------------
 --          Mutable Byte Arrays
 --------------------------------------------------------------------------------
