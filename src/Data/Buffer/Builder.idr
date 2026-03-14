@@ -48,9 +48,11 @@ prim__putbits32le : Bits32 -> AnyPtr -> PrimIO ()
 prim__putbits32be : Bits32 -> AnyPtr -> PrimIO ()
 
 %foreign "scheme:(lambda (v b) (bytevector-u64-set! (car b) (cdr b) v 'little) (set-cdr! b (+ 8 (cdr b))))"
+         "javascript:lambda:(n,b,w) => {const nx = Number(n & 0xffffffffn); const ny = Number((n >> 32n) & 0xffffffffn); b.view.setUint32(b.pos, nx, true); b.pos += 4; b.view.setUint32(b.pos, ny, true); b.pos += 4;}"
 prim__putbits64le : Bits64 -> AnyPtr -> PrimIO ()
 
 %foreign "scheme:(lambda (v b) (bytevector-u64-set! (car b) (cdr b) v 'big) (set-cdr! b (+ 8 (cdr b))))"
+         "javascript:lambda:(n,b,w) => {const nx = Number(n & 0xffffffffn); const ny = Number((n >> 32n) & 0xffffffffn); b.view.setUint32(b.pos, ny, false); b.pos += 4; b.view.setUint32(b.pos, nx, false); b.pos += 4;}"
 prim__putbits64be : Bits64 -> AnyPtr -> PrimIO ()
 
 %foreign "scheme:(lambda (v b) (bytevector-s8-set! (car b) (cdr b) v) (set-cdr! b (+ 1 (cdr b))))"
@@ -74,9 +76,11 @@ prim__putint32le : Int32 -> AnyPtr -> PrimIO ()
 prim__putint32be : Int32 -> AnyPtr -> PrimIO ()
 
 %foreign "scheme:(lambda (v b) (bytevector-s64-set! (car b) (cdr b) v 'little) (set-cdr! b (+ 8 (cdr b))))"
+         "javascript:lambda:(x,b,w) => {const n = BigInt.asUintN(64,x); const nx = Number(n & 0xffffffffn); const ny = Number((n >> 32n) & 0xffffffffn); b.view.setUint32(b.pos, nx, true); b.pos += 4; b.view.setUint32(b.pos, ny, true); b.pos += 4;}"
 prim__putint64le : Int64 -> AnyPtr -> PrimIO ()
 
 %foreign "scheme:(lambda (v b) (bytevector-s64-set! (car b) (cdr b) v 'big) (set-cdr! b (+ 8 (cdr b))))"
+         "javascript:lambda:(x,b,w) => {const n = BigInt.asUintN(64,x); const nx = Number(n & 0xffffffffn); const ny = Number((n >> 32n) & 0xffffffffn); b.view.setUint32(b.pos, ny, false); b.pos += 4; b.view.setUint32(b.pos, nx, false); b.pos += 4;}"
 prim__putint64be : Int64 -> AnyPtr -> PrimIO ()
 
 %foreign "scheme:(lambda (b) (cdr b))"
