@@ -120,7 +120,7 @@ buildHello n = BB.withBuilder (loop n)
   where
     loop : {0 q : _} -> BB.Builder q => Nat -> F1 q String
     loop 0     t = getString t
-    loop (S k) t = let _ # t := BB.put hello t in loop k t
+    loop (S k) t = let _ # t := BB.putBytes hello t in loop k t
 
 sbuildHello : Nat -> String
 sbuildHello n = SB.withBuilder (loop n)
