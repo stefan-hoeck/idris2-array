@@ -176,6 +176,17 @@ parameters {auto b : Builder q}
   putInt64BE v t = let _ # t := checksize 8 t in ffi (prim__putint64be v b.ptr) t
 
   export
+  putBytesFrom :
+       (offset, len : Nat)
+    -> IBuffer n
+    -> {auto 0 lte : LTE (offset+len) n}
+    -> F1' q
+  putBytesFrom offset len buf t =
+   let sz    := cast len
+       _ # t := checksize sz t
+    in ffi (prim__putbytes (cast offset) sz (unsafeGetBuffer buf) b.ptr) t
+
+  export
   putBytes : {n : _} -> IBuffer n -> F1' q
   putBytes buf t =
    let sz    := cast n
