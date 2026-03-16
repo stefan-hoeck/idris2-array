@@ -203,6 +203,21 @@ casset (MA arr) x pre val t =
     0 => False # t
     _ => True # t
 
+||| Atomically overwrites at the given position of the mutable array.
+|||
+||| This is supported and has been tested on the Chez and Racket backends.
+||| It trivially works on the JavaScript backends, which are single-threaded
+||| anyway.
+export %inline
+casswap : (r : MArray s n a) -> Fin n -> a -> F1' s
+casswap r x v t = assert_total (loop t)
+  where
+    covering loop : F1' s
+    loop t =
+      let cur # t  := get r x t
+          True # t := casset r x cur v t | _ # t => loop t
+       in () # t
+
 ||| Atomic modification of an array position using a CAS-loop internally.
 |||
 ||| This is supported and has been tested on the Chez and Racket backends.
