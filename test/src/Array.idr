@@ -292,6 +292,12 @@ prop_casset_diff =
     [x,y] <- forAll $ hlist [anyBits8, anyBits8]
     (False,x) === alloc 3 x (\r => casWriteGet r (x+1) y)
 
+prop_casswap : Property
+prop_casswap =
+  property $ do
+    [x,y] <- forAll $ hlist [anyBits8, anyBits8]
+    y === alloc 3 x (\r,t => let _ # t := casswap r 2 y t in get r 2 t)
+
 prop_casupdate : Property
 prop_casupdate =
   property $ do
@@ -349,6 +355,7 @@ props = MkGroup "Array"
   , ("prop_monoid_right_neutral", prop_monoid_right_neutral)
   , ("prop_casset", prop_casset)
   , ("prop_casset_diff", prop_casset_diff)
+  , ("prop_casswap", prop_casswap)
   , ("prop_casupdate", prop_casupdate)
   , ("prop_casmodify", prop_casmodify)
   ]
