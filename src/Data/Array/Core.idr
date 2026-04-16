@@ -118,6 +118,15 @@ export
 take : (0 m : Nat) -> IArray n a -> {auto 0 lte : LTE m n} -> IArray m a
 take _ (IA arr) = IA arr
 
+||| Extracts the wrapped `AnyPtr` value of an immutable array.
+|||
+||| This can be used to pass the array in a foreign function call.
+||| Client code is responsible to make sure the array is not
+||| mutated in its raw form.
+export %inline
+unsafeToPtr : IArray n a -> AnyPtr
+unsafeToPtr (IA p) = p
+
 --------------------------------------------------------------------------------
 --          Mutable Arrays
 --------------------------------------------------------------------------------
@@ -131,6 +140,15 @@ data MArray : (s : Type) -> (n : Nat) -> (a : Type) -> Type where
 public export
 0 IOArray : Nat -> Type -> Type
 IOArray = MArray World
+
+||| Extracts the wrapped `AnyPtr` value of a mutable array.
+|||
+||| This can be used to pass the array in a foreign function call.
+||| Client code is responsible to make sure the array is not
+||| mutated in its raw form.
+export %inline
+unsafeMToPtr : MArray s n a -> AnyPtr
+unsafeMToPtr (MA p) = p
 
 --------------------------------------------------------------------------------
 -- Utilities
