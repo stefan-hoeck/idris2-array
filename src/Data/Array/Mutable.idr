@@ -4,8 +4,10 @@ import public Data.Linear.Token
 import public Data.Array.Core
 import public Data.Array.Index
 
+import Data.Linear.Traverse1
 import Data.List
 import Data.Vect
+import Syntax.T1
 
 %default total
 
@@ -415,3 +417,27 @@ parameters {k : Nat}
         let v # t := getNat r x t
             vb       := f (natToFinLT x) v
          in rewrite sym (plusSuccRightSucc m x) in go (vb::vs) x t
+
+--------------------------------------------------------------------------------
+--          Basic Mutable 2D Arrays
+--------------------------------------------------------------------------------
+
+||| A linear, mutable `w*h` matrix holding values of type `a`.
+public export
+0 Matrix1 : Type -> (w,h : Nat) -> Type -> Type
+Matrix1 s w h a = MArray s w (MArray s h a)
+
+export
+newM1 : (w, h : Nat) -> a -> F1 s (Matrix1 s w h a)
+newM1 w h v = T1.do
+  m <- unsafeMArray1 {a = MArray s h a} w
+  for1_ (allFinsFast w) $ \i => marray1 h v >>= set m i
+  pure m
+
+export %inline
+writeM1 : Matrix1 s w h a -> Fin w -> Fin h -> a -> F1' s
+writeM1 m x y v t = let r # t := get m x t in set r y v t
+
+export %inline
+readM1 : Matrix1 s w h a -> Fin w -> Fin h -> F1 s a
+readM1 m x y t = let r # t := get m x t in get r y t
