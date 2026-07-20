@@ -35,7 +35,9 @@
 ||| example how this is used.
 module Data.Array.Index
 
+import Control.Order
 import Data.So
+import Decidable.Equality
 import public Data.DPair
 import public Data.Fin
 import public Data.Maybe0
@@ -322,6 +324,25 @@ dropLemma k n =
 export
 0 plusMinusLTE : (m,n : Nat) -> LTE m n -> LTE (m + (n `minus` m)) n
 plusMinusLTE m n lte = eqLTE _ _ $ plusMinus m n lte
+
+export
+0 plusMinus0 : (m,n,x : Nat) -> n === 0 -> LTE m x -> LTE (m + n) x
+plusMinus0 m 0 x Refl lte = rewrite plusZeroRightNeutral m in lte
+
+export
+0 minusGTE : (m,n : Nat) -> GTE m n -> (n `minus` m) === 0
+minusGTE m 0         x           = Refl
+minusGTE 0 (S k)     x           = absurd x
+minusGTE (S j) (S k) (LTESucc x) = minusGTE j k x
+
+export
+0 plusMinusBothLTE : (m,n : Nat) -> LTE m x -> LTE n x -> LTE (m + (n `minus` m)) x
+plusMinusBothLTE m n ltm ltn =
+  case decEq m n of
+    Yes prf => plusMinus0 m _ x (minusGTE m n $ rewrite prf in refl) ltm
+    No contra => case connex {rel = LTE} contra of
+      Left y  => transitive (plusMinusLTE m n y) ltn
+      Right y => plusMinus0 m _ x (minusGTE m n y) ltm
 
 --------------------------------------------------------------------------------
 --          Relations
