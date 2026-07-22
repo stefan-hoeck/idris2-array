@@ -74,6 +74,13 @@ prop_last_roundtrip = property $ do
   n <- forAllNats
   finToNat (last {n}) === n
 
+-- Verifies that `offset` for `Ix` runs in O(1)
+prop_offset_roundtrip : Property
+prop_offset_roundtrip = property $ do
+  n <- forAllNats
+  o <- forAllNats
+  ixToNat (offset n o) === o
+
 export
 props : Group
 props = MkGroup "Index"
@@ -86,4 +93,5 @@ props = MkGroup "Index"
   , ("prop_fin_lt", prop_fin_lt)
   , ("prop_fin_compare", prop_fin_compare)
   , ("prop_last_roundtrip", prop_last_roundtrip)
+  , ("prop_offset_roundtrip", prop_offset_roundtrip)
   ]
