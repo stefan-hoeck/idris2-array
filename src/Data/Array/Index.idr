@@ -127,6 +127,19 @@ succIx : Ix m n -> Ix (S m) (S n)
 succIx IZ     = IZ
 succIx (IS x) = IS (succIx x)
 
+||| If `m <= n` then `o+m <= o+n`.
+public export
+plusIx : Ix m n -> Ix (o + m) (o + n)
+plusIx IZ     = IZ
+plusIx (IS x) = IS $ rewrite plusSuccRightSucc o m in plusIx x
+
+||| If `m <= n` then `m+o <= n*o`.
+public export
+symPlusIx : Ix m n -> Ix (m+o) (n+o)
+symPlusIx x =
+  rewrite plusCommutative m o in
+  rewrite plusCommutative n o in plusIx x
+
 ||| Convert a natural number to the corresponding `Ix 0 n`
 ||| so that `n === ixToNat (natToIx n)` as shown in
 ||| `ixLemma`.
@@ -134,6 +147,10 @@ public export
 natToIx : (n : Nat) -> Ix 0 n
 natToIx 0     = IZ
 natToIx (S k) = IS $ succIx (natToIx k)
+
+public export
+offset : (0 n : Nat) -> (o : Nat) -> Ix n (o+n)
+offset n o = symPlusIx {o = n} $ natToIx o
 
 ||| Convert a natural number to the corresponding `Ix 1 (S n)`,
 ||| the largest value strictly smaller than `S n`.
