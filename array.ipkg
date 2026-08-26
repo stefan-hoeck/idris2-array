@@ -19,5 +19,6 @@ modules    = Data.Array.All
            , Data.Buffer.Core
            , Data.Buffer.Indexed
            , Data.Buffer.Mutable
+           , Data.Buffer.Packed
 
 sourcedir  = "src"

@@ -359,4 +359,3 @@ props = MkGroup "Array"
   , ("prop_casupdate", prop_casupdate)
   , ("prop_casmodify", prop_casmodify)
   ]
-

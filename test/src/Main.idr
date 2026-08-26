@@ -6,6 +6,7 @@ import Array.Manual
 import Array
 import Buffer.Builder
 import Buffer.Manual
+import Buffer.Packed
 import Buffer
 import Index
 import Hedgehog
@@ -21,5 +22,6 @@ main = test
   , Index.props
   , Buffer.Builder.props
   , Buffer.Manual.props
+  , Buffer.Packed.props
   , Buffer.props
   ]

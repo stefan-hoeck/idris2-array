@@ -58,4 +58,3 @@ props =
     , ("getAt_str1",    test1 (Manual.getAt 1) "foo")
     , ("getAt_str4",    test1 (Manual.getAt 4) "quux")
     ]
-

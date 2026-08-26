@@ -252,4 +252,3 @@ props = MkGroup "Buffer"
   , ("prop_append", prop_append)
   , ("prop_mappend", prop_mappend)
   ]
-

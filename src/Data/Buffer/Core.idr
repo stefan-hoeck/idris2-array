@@ -316,7 +316,7 @@ export %inline
 unsafeFreeze : (r : MBuffer s n) -> F1 s (IBuffer n)
 unsafeFreeze r = unsafeFreezeLTE @{reflexive} r n
 
-||| Copy a prefix of a mutable byte arrya into an immutable byte array.
+||| Copy a prefix of a mutable byte array into an immutable byte array.
 export
 freezeLTE : MBuffer s n -> (m : Nat) -> (0 p : LTE m n) => F1 s (IBuffer m)
 freezeLTE src m t =
