@@ -12,27 +12,35 @@ import Data.Linear.Token
 --------------------------------------------------------------------------------
 
 %foreign "scheme:(lambda (b o) (bytevector-s8-ref b o))"
+         "javascript:lambda:(buf,offset)=>buf[Number(offset)]"
 prim__getInt8 : Buffer -> (offset : Integer) -> Int8
 
 %foreign "scheme:(lambda (b o v) (bytevector-s8-set! b o v))"
+         "javascript:lambda:(buf,offset,value,t)=>{buf[Number(offset)] = value; return t}"
 prim__setInt8 : Buffer -> (offset : Integer) -> Int8 -> PrimIO ()
 
 %foreign "scheme:(lambda (b o) (bytevector-s16-ref b o 'little))"
+         "javascript:lambda:(buf,offset)=>{const o=Number(offset); return buf[o] | (buf[o+1] << 8)}"
 prim__getInt16 : Buffer -> (offset : Integer) -> Int16
 
 %foreign "scheme:(lambda (b o v) (bytevector-s16-set! b o v 'little))"
+         "javascript:lambda:(buf,offset,value,t)=>{const o=Number(offset); buf[o]=value; buf[o+1]=value>>8; return t}"
 prim__setInt16 : Buffer -> (offset : Integer) -> Int16 -> PrimIO ()
 
 %foreign "scheme:(lambda (b o) (bytevector-s32-ref b o 'little))"
+         "javascript:lambda:(buf,offset)=>{const o=Number(offset); return buf[o] | (buf[o+1] << 8) | (buf[o+2] << 16) | (buf[o+3] << 24)}"
 prim__getInt32 : Buffer -> (offset : Integer) -> Int32
 
 %foreign "scheme:(lambda (b o v) (bytevector-s32-set! b o v 'little))"
+         "javascript:lambda:(buf,offset,value,t)=>{const o=Number(offset); buf[o]=value; buf[o+1]=value>>8; buf[o+2]=value>>16; buf[o+3]=value>>24; return t}"
 prim__setInt32 : Buffer -> (offset : Integer) -> Int32 -> PrimIO ()
 
 %foreign "scheme:(lambda (b o) (bytevector-s64-ref b o 'little))"
+         "javascript:lambda:(buf,offset)=>{const o=Number(offset); let v=BigInt(buf[o]) | (BigInt(buf[o+1])<<8n) | (BigInt(buf[o+2])<<16n) | (BigInt(buf[o+3])<<24n) | (BigInt(buf[o+4])<<32n) | (BigInt(buf[o+5])<<40n) | (BigInt(buf[o+6])<<48n) | (BigInt(buf[o+7])<<56n); return v >= 0x8000000000000000n ? v - 0x10000000000000000n : v}"
 prim__getInt64 : Buffer -> (offset : Integer) -> Int64
 
 %foreign "scheme:(lambda (b o v) (bytevector-s64-set! b o v 'little))"
+         "javascript:lambda:(buf,offset,value,t)=>{const o=Number(offset); const v=BigInt.asUintN(64, value); buf[o]=Number(v & 255n); buf[o+1]=Number((v>>8n)&255n); buf[o+2]=Number((v>>16n)&255n); buf[o+3]=Number((v>>24n)&255n); buf[o+4]=Number((v>>32n)&255n); buf[o+5]=Number((v>>40n)&255n); buf[o+6]=Number((v>>48n)&255n); buf[o+7]=Number((v>>56n)&255n); return t}"
 prim__setInt64 : Buffer -> (offset : Integer) -> Int64 -> PrimIO ()
 
 --------------------------------------------------------------------------------
