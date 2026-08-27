@@ -39,6 +39,13 @@ prim__setInt64 : Buffer -> (offset : Integer) -> Int64 -> PrimIO ()
 -- PackedInt
 --------------------------------------------------------------------------------
 
+||| Describes an integral type that can be stored in a packed byte buffer.
+|||
+||| `bytewidth` gives the number of bytes occupied by each element, while
+||| `getPacked` and `setPacked` provide the corresponding low-level access
+||| operations.
+|||
+||| Instances are provided for `Int8`, `Int16`, `Int32`, and `Int64`.
 public export
 interface PackedInt a where
   bytewidth : Nat
@@ -73,6 +80,12 @@ PackedInt Int64 where
 -- PackedBuffer
 --------------------------------------------------------------------------------
 
+||| A mutable, packed buffer containing `n` values of type `a`.
+|||
+||| Values are stored consecutively in the underlying byte buffer using the
+||| representation specified by the `PackedInt a` instance. The logical index
+||| of an element is translated to a byte offset by multiplying it by
+||| `bytewidth`.
 public export
 record PackedBuffer (s : Type) (n : Nat) (a : Type) where
   constructor MkPackedBuffer
@@ -82,12 +95,22 @@ record PackedBuffer (s : Type) (n : Nat) (a : Type) where
 -- Utilities
 --------------------------------------------------------------------------------
 
+||| Allocate a mutable packed buffer containing `n` elements.
+|||
+||| The resulting buffer is represented using the linear state `s` and must
+||| therefore be consumed within its enclosing linear scope.
+|||
+||| The underlying byte buffer contains exactly `n * bytewidth` bytes.
 export %inline
 mpackedbuffer1 : PackedInt e => (n : Nat) -> F1 s (PackedBuffer s n e)
 mpackedbuffer1 {e} n t =
   let MkIORes pb _ := prim__newBuf (cast $ n * bytewidth {a = e}) %MkWorld
    in MkPackedBuffer pb # t
 
+||| Lift packed-buffer allocation into an arbitrary linear effect.
+|||
+||| This is the lifted form of `mpackedbuffer1`, allowing a packed buffer to be
+||| allocated within any effect supporting `Lift1`.
 export %inline
 mpackedbuffer : PackedInt e => Lift1 s f => (n : Nat) -> f (PackedBuffer s n e)
 mpackedbuffer {e} n = lift1 (mpackedbuffer1 n {e})
@@ -96,10 +119,17 @@ mpackedbuffer {e} n = lift1 (mpackedbuffer1 n {e})
 -- Allocation
 --------------------------------------------------------------------------------
 
+||| The scoped computation associated with a packed buffer.
+|||
+||| A `WithPackedBuffer n e a` computation receives a mutable packed buffer
+||| containing `n` elements of type `e` and produces a value of type `a`.
 public export
 0 WithPackedBuffer : Nat -> Type -> Type -> Type
 WithPackedBuffer n e a = forall s . (r : PackedBuffer s n e) -> F1 s a
 
+||| Allocate a packed buffer for the duration of a scoped computation.
+|||
+||| The buffer contains `n` elements of type `e`.
 export
 alloc : PackedInt e => (n : Nat) -> WithPackedBuffer n e a -> a
 alloc {e} n f =
@@ -111,11 +141,21 @@ alloc {e} n f =
 -- Access
 --------------------------------------------------------------------------------
 
+||| Read the element at the given logical index.
+|||
+||| The logical index is converted to a byte offset using the element's
+||| `bytewidth`. Access is therefore performed directly against the underlying
+||| byte buffer without boxing each stored value.
 export %inline
 get : PackedInt a => PackedBuffer s n a -> Fin n -> F1 s a
 get {a} (MkPackedBuffer buf) ix t =
   getPacked buf (cast $ finToNat ix * bytewidth {a}) # t
 
+||| Write a value at the given logical index.
+|||
+||| The logical index is converted to a byte offset using the element's
+||| `bytewidth`. The value is written directly into the underlying byte buffer
+||| using the representation defined by the `PackedInt` instance.
 export %inline
 set : PackedInt a => PackedBuffer s n a -> Fin n -> a -> F1' s
 set {a} (MkPackedBuffer buf) ix value =
