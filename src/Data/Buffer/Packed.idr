@@ -85,7 +85,7 @@ prim__setInt64 : Buffer -> (offset : Integer) -> Int64 -> PrimIO ()
 ||| `getPacked` and `setPacked` provide the corresponding low-level access
 ||| operations.
 |||
-||| Instances are provided for `Bits8`, `Bits16`, `Bits32`, `Bits64`, `Int8`, `Int16`, `Int32`, and `Int64`.
+||| Implementations are provided for `Bits8`, `Bits16`, `Bits32`, `Bits64`, `Int8`, `Int16`, `Int32`, and `Int64`.
 public export
 interface PackedInteger a where
   bytewidth : Nat
@@ -147,7 +147,7 @@ PackedInteger Int64 where
 ||| A mutable, packed buffer containing `n` values of type `a`.
 |||
 ||| Values are stored consecutively in the underlying byte buffer using the
-||| representation specified by the `PackedInteger a` instance. The logical index
+||| representation specified by the `PackedInteger a` implementation. The logical index
 ||| of an element is translated to a byte offset by multiplying it by
 ||| `bytewidth`.
 public export
@@ -219,7 +219,7 @@ get {a} (MkPackedBuffer buf) ix t =
 |||
 ||| The logical index is converted to a byte offset using the element's
 ||| `bytewidth`. The value is written directly into the underlying byte buffer
-||| using the representation defined by the `PackedInteger` instance.
+||| using the representation defined by the `PackedInteger` implementation.
 export %inline
 set : PackedInteger a => PackedBuffer s n a -> Fin n -> a -> F1' s
 set {a} (MkPackedBuffer buf) ix value =
