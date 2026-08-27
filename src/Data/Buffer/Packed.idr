@@ -11,6 +11,38 @@ import Data.Linear.Token
 -- FFI
 --------------------------------------------------------------------------------
 
+%foreign "scheme:(lambda (b o) (bytevector-u8-ref b o))"
+         "javascript:lambda:(buf,offset)=>buf[Number(offset)]"
+prim__getBits8 : Buffer -> (offset : Integer) -> Bits8
+
+%foreign "scheme:(lambda (b o v) (bytevector-u8-set! b o v))"
+         "javascript:lambda:(buf,offset,value,t)=>{buf[Number(offset)] = value; return t}"
+prim__setBits8 : Buffer -> (offset : Integer) -> Bits8 -> PrimIO ()
+
+%foreign "scheme:(lambda (b o) (bytevector-u16-ref b o 'little))"
+         "javascript:lambda:(buf,offset)=>new DataView(buf.buffer, buf.byteOffset, buf.byteLength).getUint16(Number(offset), true)"
+prim__getBits16 : Buffer -> (offset : Integer) -> Bits16
+
+%foreign "scheme:(lambda (b o v) (bytevector-u16-set! b o v 'little))"
+         "javascript:lambda:(buf,offset,value,t)=>{new DataView(buf.buffer, buf.byteOffset, buf.byteLength).setUint16(Number(offset), value, true); return t}"
+prim__setBits16 : Buffer -> (offset : Integer) -> Bits16 -> PrimIO ()
+
+%foreign "scheme:(lambda (b o) (bytevector-u32-ref b o 'little))"
+         "javascript:lambda:(buf,offset)=>new DataView(buf.buffer, buf.byteOffset, buf.byteLength).getUint32(Number(offset), true)"
+prim__getBits32 : Buffer -> (offset : Integer) -> Bits32
+
+%foreign "scheme:(lambda (b o v) (bytevector-u32-set! b o v 'little))"
+         "javascript:lambda:(buf,offset,value,t)=>{new DataView(buf.buffer, buf.byteOffset, buf.byteLength).setUint32(Number(offset), value, true); return t}"
+prim__setBits32 : Buffer -> (offset : Integer) -> Bits32 -> PrimIO ()
+
+%foreign "scheme:(lambda (b o) (bytevector-u64-ref b o 'little))"
+         "javascript:lambda:(buf,offset)=>new DataView(buf.buffer, buf.byteOffset, buf.byteLength).getBigUint64(Number(offset), true)"
+prim__getBits64 : Buffer -> (offset : Integer) -> Bits64
+
+%foreign "scheme:(lambda (b o v) (bytevector-u64-set! b o v 'little))"
+         "javascript:lambda:(buf,offset,value,t)=>{new DataView(buf.buffer, buf.byteOffset, buf.byteLength).setBigUint64(Number(offset), value, true); return t}"
+prim__setBits64 : Buffer -> (offset : Integer) -> Bits64 -> PrimIO ()
+
 %foreign "scheme:(lambda (b o) (bytevector-s8-ref b o))"
          "javascript:lambda:(buf,offset)=>new Int8Array(buf.buffer, buf.byteOffset, buf.byteLength)[Number(offset)]"
 prim__getInt8 : Buffer -> (offset : Integer) -> Int8
@@ -44,7 +76,7 @@ prim__getInt64 : Buffer -> (offset : Integer) -> Int64
 prim__setInt64 : Buffer -> (offset : Integer) -> Int64 -> PrimIO ()
 
 --------------------------------------------------------------------------------
--- PackedInt
+-- PackedInteger
 --------------------------------------------------------------------------------
 
 ||| Describes an integral type that can be stored in a packed byte buffer.
@@ -53,33 +85,57 @@ prim__setInt64 : Buffer -> (offset : Integer) -> Int64 -> PrimIO ()
 ||| `getPacked` and `setPacked` provide the corresponding low-level access
 ||| operations.
 |||
-||| Instances are provided for `Int8`, `Int16`, `Int32`, and `Int64`.
+||| Instances are provided for `Bits8`, `Bits16`, `Bits32`, `Bits64`, `Int8`, `Int16`, `Int32`, and `Int64`.
 public export
-interface PackedInt a where
+interface PackedInteger a where
   bytewidth : Nat
   getPacked : Buffer -> Integer -> a
   setPacked : Buffer -> Integer -> a -> PrimIO ()
 
 public export
-PackedInt Int8 where
+PackedInteger Bits8 where
+  bytewidth = 1
+  getPacked = prim__getBits8
+  setPacked = prim__setBits8
+
+public export
+PackedInteger Bits16 where
+  bytewidth = 2
+  getPacked = prim__getBits16
+  setPacked = prim__setBits16
+
+public export
+PackedInteger Bits32 where
+  bytewidth = 4
+  getPacked = prim__getBits32
+  setPacked = prim__setBits32
+
+public export
+PackedInteger Bits64 where
+  bytewidth = 8
+  getPacked = prim__getBits64
+  setPacked = prim__setBits64
+
+public export
+PackedInteger Int8 where
   bytewidth = 1
   getPacked = prim__getInt8
   setPacked = prim__setInt8
 
 public export
-PackedInt Int16 where
+PackedInteger Int16 where
   bytewidth = 2
   getPacked = prim__getInt16
   setPacked = prim__setInt16
 
 public export
-PackedInt Int32 where
+PackedInteger Int32 where
   bytewidth = 4
   getPacked = prim__getInt32
   setPacked = prim__setInt32
 
 public export
-PackedInt Int64 where
+PackedInteger Int64 where
   bytewidth = 8
   getPacked = prim__getInt64
   setPacked = prim__setInt64
@@ -91,7 +147,7 @@ PackedInt Int64 where
 ||| A mutable, packed buffer containing `n` values of type `a`.
 |||
 ||| Values are stored consecutively in the underlying byte buffer using the
-||| representation specified by the `PackedInt a` instance. The logical index
+||| representation specified by the `PackedInteger a` instance. The logical index
 ||| of an element is translated to a byte offset by multiplying it by
 ||| `bytewidth`.
 public export
@@ -110,7 +166,7 @@ record PackedBuffer (s : Type) (n : Nat) (a : Type) where
 |||
 ||| The underlying byte buffer contains exactly `n * bytewidth` bytes.
 export %inline
-mpackedbuffer1 : PackedInt e => (n : Nat) -> F1 s (PackedBuffer s n e)
+mpackedbuffer1 : PackedInteger e => (n : Nat) -> F1 s (PackedBuffer s n e)
 mpackedbuffer1 {e} n t =
   let MkIORes pb _ := prim__newBuf (cast $ n * bytewidth {a = e}) %MkWorld
    in MkPackedBuffer pb # t
@@ -120,7 +176,7 @@ mpackedbuffer1 {e} n t =
 ||| This is the lifted form of `mpackedbuffer1`, allowing a packed buffer to be
 ||| allocated within any effect supporting `Lift1`.
 export %inline
-mpackedbuffer : PackedInt e => Lift1 s f => (n : Nat) -> f (PackedBuffer s n e)
+mpackedbuffer : PackedInteger e => Lift1 s f => (n : Nat) -> f (PackedBuffer s n e)
 mpackedbuffer {e} n = lift1 (mpackedbuffer1 n {e})
 
 --------------------------------------------------------------------------------
@@ -139,7 +195,7 @@ WithPackedBuffer n e a = forall s . (r : PackedBuffer s n e) -> F1 s a
 |||
 ||| The buffer contains `n` elements of type `e`.
 export
-alloc : PackedInt e => (n : Nat) -> WithPackedBuffer n e a -> a
+alloc : PackedInteger e => (n : Nat) -> WithPackedBuffer n e a -> a
 alloc {e} n f =
   run1 $ \t =>
     let r # t := mpackedbuffer1 n {e} t
@@ -155,7 +211,7 @@ alloc {e} n f =
 ||| `bytewidth`. Access is therefore performed directly against the underlying
 ||| byte buffer without boxing each stored value.
 export %inline
-get : PackedInt a => PackedBuffer s n a -> Fin n -> F1 s a
+get : PackedInteger a => PackedBuffer s n a -> Fin n -> F1 s a
 get {a} (MkPackedBuffer buf) ix t =
   getPacked buf (cast $ finToNat ix * bytewidth {a}) # t
 
@@ -163,8 +219,8 @@ get {a} (MkPackedBuffer buf) ix t =
 |||
 ||| The logical index is converted to a byte offset using the element's
 ||| `bytewidth`. The value is written directly into the underlying byte buffer
-||| using the representation defined by the `PackedInt` instance.
+||| using the representation defined by the `PackedInteger` instance.
 export %inline
-set : PackedInt a => PackedBuffer s n a -> Fin n -> a -> F1' s
+set : PackedInteger a => PackedBuffer s n a -> Fin n -> a -> F1' s
 set {a} (MkPackedBuffer buf) ix value =
   ffi (setPacked buf (cast $ finToNat ix * bytewidth {a}) value)
