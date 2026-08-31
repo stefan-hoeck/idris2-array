@@ -27,5 +27,6 @@ commit = "latest:main"
 ipkg   = "enum.ipkg"
 
 [custom.all]
-ref1.commit    = "latest:main"
-algebra.commit = "latest:main"
+ref1.commit       = "latest:main"
+bytestring.commit = "latest:main"
+algebra.commit    = "latest:main"
