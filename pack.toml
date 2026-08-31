@@ -4,6 +4,12 @@ path   = "."
 ipkg   = "array.ipkg"
 test   = "test/test.ipkg"
 
+[custom.all.darray]
+type   = "local"
+path   = "."
+ipkg   = "darray/darray.ipkg"
+test   = "test/test.ipkg"
+
 [custom.all.array-docs]
 type   = "local"
 path   = "docs"
@@ -14,8 +20,12 @@ type   = "local"
 path   = "profile"
 ipkg   = "profile.ipkg"
 
-[custom.all.ref1]
+[custom.all.enum]
 type   = "git"
-url    = "https://github.com/stefan-hoeck/idris2-ref1"
+url    = "git@github.com:stefan-hoeck/idris2-enum"
 commit = "latest:main"
-ipkg   = "ref1.ipkg"
+ipkg   = "enum.ipkg"
+
+[custom.all]
+ref1.commit    = "latest:main"
+algebra.commit = "latest:main"

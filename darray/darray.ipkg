@@ -1,0 +1,12 @@
+package array
+version    = 0.0.1
+authors    = "Stefan Höck"
+depends    = base    >= 0.6.0
+           , enum
+           , array
+
+brief      = "Immutable and mutable enum-indexed dependent arrays"
+
+modules    = Data.DArray
+
+sourcedir  = "src"
