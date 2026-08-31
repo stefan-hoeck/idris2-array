@@ -22,7 +22,7 @@ ipkg   = "profile.ipkg"
 
 [custom.all.enum]
 type   = "git"
-url    = "git@github.com:stefan-hoeck/idris2-enum"
+url    = "https://github.com/stefan-hoeck/idris2-enum"
 commit = "latest:main"
 ipkg   = "enum.ipkg"
 
