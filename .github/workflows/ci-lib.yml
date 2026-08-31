@@ -31,6 +31,8 @@ jobs:
         run: |
           apt-get update
           apt-get install --yes nodejs
+      - name: Install bytestring
+        run: pack install bytestring
       - name: Build lib
         run: pack install array
       - name: Build darray
