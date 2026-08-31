@@ -1,5 +1,6 @@
-module Data.DArray.Core
+module Data.DArray
 
+import Data.List.Elem
 import Data.Array.Core
 import Data.Linear.Token
 import public Data.Array.Index
@@ -28,16 +29,6 @@ record MDArray (s : Type) (i : Type) (p : i -> Type) where
   constructor MDA
   arr : AnyPtr
 
-parameters (0 i       : Type)
-           (0 p       : i -> Type)
-           {n         : Nat}
-           {auto enum : Enum i n}
-
-  export %inline
-  unsafeMDArray1 : F1 s (MDArray s i p)
-  unsafeMDArray1 t =
-    let p # t := ffi (prim__emptyArray $ cast n) t in MDA p # t
-
 export %inline
 dget : Enum i n => MDArray s i p -> (x : i) -> F1 s (p x)
 dget (MDA ad) x t =
@@ -58,3 +49,35 @@ freeze (MDA src) t =
   let dst # t := ffi (prim__emptyArray $ cast n) t
       _   # t := ffi (prim__copyArray src 0 (cast n) dst 0) t
    in DA dst # t
+
+parameters (0 i       : Type)
+           (0 p       : i -> Type)
+           {n         : Nat}
+           {auto enum : Enum i n}
+
+  export %inline
+  unsafeMDArray1 : F1 s (MDArray s i p)
+  unsafeMDArray1 t =
+    let p # t := ffi (prim__emptyArray $ cast n) t in MDA p # t
+
+  ||| A safe constructor for mutable dependent arrays.
+  export
+  mdarray1 :
+       (is : List i)
+    -> (0 prf : (v : i) -> Elem v is)
+    -> (val : (v : i) -> p v)
+    -> F1 s (MDArray s i p)
+  mdarray1 is _ val t = let md # t := unsafeMDArray1 t in go is md t
+    where
+      go : List i -> MDArray s i p -> F1 s (MDArray s i p)
+      go []        m t = m # t
+      go (x :: xs) m t = let _ # t := dset m x (val x) t in go xs m t
+
+  export %inline
+  darray :
+       (is : List i)
+    -> (0 prf : (v : i) -> Elem v is)
+    -> (val : (v : i) -> p v)
+    -> DArray i p
+  darray is prf val =
+    run1 $ \t => let m # t := mdarray1 is prf val t in freeze m t

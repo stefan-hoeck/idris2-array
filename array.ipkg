@@ -20,4 +20,6 @@ modules    = Data.Array.All
            , Data.Buffer.Indexed
            , Data.Buffer.Mutable
 
+           , Data.DArray
+
 sourcedir  = "src"
