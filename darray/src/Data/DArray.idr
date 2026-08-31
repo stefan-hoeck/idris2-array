@@ -1,19 +1,10 @@
 module Data.DArray
 
-import Data.List.Elem
 import Data.Array.Core
 import Data.Linear.Token
-import public Data.Array.Index
+import public Data.Enum
 
 %default total
-
-public export
-interface Enum (0 i : Type) (0 n : Nat) | i where
-  toFin   : i -> Fin n
-
-%inline
-toInteger : Enum i n => i -> Integer
-toInteger = cast . finToNat . toFin
 
 export
 record DArray (i : Type) (p : i -> Type) where
@@ -22,7 +13,7 @@ record DArray (i : Type) (p : i -> Type) where
 
 export %inline
 at : Enum i n => DArray i p -> (x : i) -> p x
-at (DA ad) x = believe_me $ prim__arrayGet ad (toInteger x)
+at (DA ad) x = believe_me $ prim__arrayGet ad (enumToInteger x)
 
 export
 record MDArray (s : Type) (i : Type) (p : i -> Type) where
@@ -32,12 +23,12 @@ record MDArray (s : Type) (i : Type) (p : i -> Type) where
 export %inline
 dget : Enum i n => MDArray s i p -> (x : i) -> F1 s (p x)
 dget (MDA ad) x t =
-  believe_me (prim__arrayGet ad $ toInteger x) # t
+  believe_me (prim__arrayGet ad $ enumToInteger x) # t
 
 export %inline
 dset : Enum i n => MDArray s i p -> (x : i) -> p x -> F1' s
 dset (MDA ad) x v =
-  ffi (prim__arraySet ad (toInteger x) (believe_me v))
+  ffi (prim__arraySet ad (enumToInteger x) (believe_me v))
 
 export %inline
 unsafeFreeze : MDArray s i p -> F1 s (DArray i p)
@@ -52,7 +43,7 @@ freeze (MDA src) t =
 
 parameters (0 i       : Type)
            (0 p       : i -> Type)
-           {n         : Nat}
+           {n         : Bits32}
            {auto enum : Enum i n}
 
   export %inline

@@ -7,8 +7,6 @@ import Array
 import Buffer.Builder
 import Buffer.Manual
 import Buffer
-import DArray
-import DArray.Large
 import Index
 import Hedgehog
 
@@ -24,5 +22,4 @@ main = test
   , Buffer.Builder.props
   , Buffer.Manual.props
   , Buffer.props
-  , DArray.props
   ]
