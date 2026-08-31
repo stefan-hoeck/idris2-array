@@ -31,8 +31,10 @@ jobs:
         run: |
           apt-get update
           apt-get install --yes nodejs
-      - name: Install bytestring
-        run: pack install bytestring
+      - name: Install test-deps
+        run: |
+          pack install bytestring
+          pack install ilex-core
       - name: Build lib
         run: pack install array
       - name: Build darray
