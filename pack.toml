@@ -6,8 +6,8 @@ test   = "test/test.ipkg"
 
 [custom.all.darray]
 type   = "local"
-path   = "."
-ipkg   = "darray/darray.ipkg"
+path   = "darray"
+ipkg   = "darray.ipkg"
 test   = "test/test.ipkg"
 
 [custom.all.array-docs]

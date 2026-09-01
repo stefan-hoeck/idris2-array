@@ -1,13 +1,10 @@
 module DArray
 
 import Data.DArray
-import Data.Finite
-import Data.List.Elem
 import Data.List.Quantifiers
 import Data.Vect
-import Derive.Finite
+import Derive.Enum
 import Derive.HDecEq
-import Derive.Prelude
 import Hedgehog
 
 %language ElabReflection
@@ -20,7 +17,7 @@ data MyTyp : Type where
   AMaybe  : MyTyp
   AList   : MyTyp
 
-%runElab derive "MyTyp" [Show,Eq,Ord,Finite,HDecEq]
+%runElab derive "MyTyp" [Show,Enum,HDecEq]
 
 public export
 0 Typ : MyTyp -> Type
@@ -30,19 +27,9 @@ Typ AString = String
 Typ AMaybe  = Maybe Bits8
 Typ AList   = List Integer
 
-export
-0 allInValues : (v : MyTyp) -> Elem v Finite.values
-
-export
-0 allLT : (v : MyTyp) -> lt (cast $ conIndexMyTyp v) 5 === True
-
-export %inline
-Enum MyTyp 5 where
-  toFin x = natToFinLT (cast $ conIndexMyTyp x) @{ltReflectsLT _ _ $ allLT x}
-
 eqs : DArray MyTyp (Eq . Typ)
 eqs =
-  darray _ _ values allInValues $ \case
+  darray _ _ $ \case
     ABool   => %search
     ANat    => %search
     AString => %search
@@ -51,7 +38,7 @@ eqs =
 
 ords : DArray MyTyp (Ord . Typ)
 ords =
-  darray _ _ values allInValues $ \case
+  darray _ _ $ \case
     ABool   => %search
     ANat    => %search
     AString => %search
@@ -60,7 +47,7 @@ ords =
 
 shows : DArray MyTyp (Show . Typ)
 shows =
-  darray _ _ values allInValues $ \case
+  darray _ _ $ \case
     ABool   => %search
     ANat    => %search
     AString => %search
@@ -72,7 +59,7 @@ myTyps = element (fromList values)
 
 gens : DArray MyTyp (Gen . Typ)
 gens =
-  darray _ _ values allInValues $ \case
+  darray _ _ $ \case
     ABool   => bool
     ANat    => nat (linear 0 100)
     AString => string (linear 0 20) printableAscii
@@ -112,19 +99,3 @@ props =
     [ ("prop_eq_refl", prop_eq_refl)
     , ("prop_eq_sym", prop_eq_sym)
     ]
-
---------------------------------------------------------------------------------
--- Proofs
---------------------------------------------------------------------------------
-
-allInValues ABool   = %search
-allInValues ANat    = %search
-allInValues AString = %search
-allInValues AMaybe  = %search
-allInValues AList   = %search
-
-allLT ABool   = Refl
-allLT ANat    = Refl
-allLT AString = Refl
-allLT AMaybe  = Refl
-allLT AList   = Refl
