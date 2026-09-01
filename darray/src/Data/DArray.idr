@@ -53,22 +53,13 @@ parameters (0 i       : Type)
 
   ||| A safe constructor for mutable dependent arrays.
   export
-  mdarray1 :
-       (is : List i)
-    -> (0 prf : (v : i) -> Elem v is)
-    -> (val : (v : i) -> p v)
-    -> F1 s (MDArray s i p)
-  mdarray1 is _ val t = let md # t := unsafeMDArray1 t in go is md t
+  mdarray1 : (val : (v : i) -> p v) -> F1 s (MDArray s i p)
+  mdarray1 val t = let md # t := unsafeMDArray1 t in go values md t
     where
       go : List i -> MDArray s i p -> F1 s (MDArray s i p)
       go []        m t = m # t
       go (x :: xs) m t = let _ # t := dset m x (val x) t in go xs m t
 
   export %inline
-  darray :
-       (is : List i)
-    -> (0 prf : (v : i) -> Elem v is)
-    -> (val : (v : i) -> p v)
-    -> DArray i p
-  darray is prf val =
-    run1 $ \t => let m # t := mdarray1 is prf val t in freeze m t
+  darray : (val : (v : i) -> p v) -> DArray i p
+  darray val = run1 $ \t => let m # t := mdarray1 val t in freeze m t
