@@ -2,6 +2,7 @@ module Data.DArray
 
 import Data.Array.Core
 import Data.Linear.Token
+import Data.List.Quantifiers
 import public Data.Enum
 
 %default total
@@ -53,6 +54,15 @@ parameters (0 i       : Type)
 
   ||| A safe constructor for mutable dependent arrays.
   export
+  mdarrayAll1 : All p Finite.values -> F1 s (MDArray s i p)
+  mdarrayAll1 vs t = let md # t := unsafeMDArray1 t in go values vs md t
+    where
+      go : (is : List i) -> All p is -> MDArray s i p -> F1 s (MDArray s i p)
+      go []      []      m t = m # t
+      go (x::xs) (v::vs) m t = let _ # t := dset m x v t in go xs vs m t
+
+  ||| A safe constructor for mutable dependent arrays.
+  export
   mdarray1 : (val : (v : i) -> p v) -> F1 s (MDArray s i p)
   mdarray1 val t = let md # t := unsafeMDArray1 t in go values md t
     where
@@ -63,3 +73,7 @@ parameters (0 i       : Type)
   export %inline
   darray : (val : (v : i) -> p v) -> DArray i p
   darray val = run1 $ \t => let m # t := mdarray1 val t in freeze m t
+
+  export %inline
+  darrayAll : All p Finite.values -> DArray i p
+  darrayAll vs = run1 $ \t => let m # t := mdarrayAll1 vs t in freeze m t
