@@ -61,6 +61,11 @@ parameters (0 i       : Type)
       go []      []      m t = m # t
       go (x::xs) (v::vs) m t = let _ # t := dset m x v t in go xs vs m t
 
+  ||| Like `mdarrayAll1` but accepts the list of values as an auto implicit.
+  export %inline
+  mdarrayAuto1 : All p Finite.values => F1 s (MDArray s i p)
+  mdarrayAuto1 = mdarrayAll1 %search
+
   ||| A safe constructor for mutable dependent arrays.
   export
   mdarray1 : (val : (v : i) -> p v) -> F1 s (MDArray s i p)
@@ -77,3 +82,7 @@ parameters (0 i       : Type)
   export %inline
   darrayAll : All p Finite.values -> DArray i p
   darrayAll vs = run1 $ \t => let m # t := mdarrayAll1 vs t in freeze m t
+
+  export %inline
+  darrayAuto : All p Finite.values => DArray i p
+  darrayAuto = darrayAll %search
