@@ -20,13 +20,8 @@ type   = "local"
 path   = "profile"
 ipkg   = "profile.ipkg"
 
-[custom.all.enum]
-type   = "git"
-url    = "https://github.com/stefan-hoeck/idris2-enum"
-commit = "latest:main"
-ipkg   = "enum.ipkg"
-
 [custom.all]
+enum.commit       = "latest:main"
 ref1.commit       = "latest:main"
 bytestring.commit = "latest:main"
 algebra.commit    = "latest:main"

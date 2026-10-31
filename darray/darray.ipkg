@@ -8,5 +8,6 @@ depends    = base    >= 0.6.0
 brief      = "Immutable and mutable enum-indexed dependent arrays"
 
 modules    = Data.DArray
+           , Data.TArray
 
 sourcedir  = "src"
