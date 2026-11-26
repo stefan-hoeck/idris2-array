@@ -474,6 +474,34 @@ parameters (arr : IArray n e)
        _ # t := setIx m k y t
     in tr1A k f m t
 
+  trE : (k : Nat) -> Ix k n => (e -> Either x b) -> MArray s n b -> F1 s (Either x $ IArray n b)
+  trE 0     f m t = let res # t := unsafeFreeze m t in Right res # t
+  trE (S k) f m t =
+   let Right y := f (arr `ix` k) | Left x => Left x # t
+       _   # t := setIx m k y t
+    in trE k f m t
+
+  trM : (k : Nat) -> Ix k n => (e -> Maybe b) -> MArray s n b -> F1 s (Maybe $ IArray n b)
+  trM 0     f m t = let res # t := unsafeFreeze m t in Just res # t
+  trM (S k) f m t =
+   let Just y := f (arr `ix` k) | Nothing => Nothing # t
+       _  # t := setIx m k y t
+    in trM k f m t
+
+||| Specialized version of traversing an array over the `Maybe` applicatice.
+|||
+||| Stack-safe and faster than vanilla `traverse`.
+export %inline
+itraverseMaybe : {n : _} -> (a -> Maybe b) -> IArray n a -> Maybe (IArray n b)
+itraverseMaybe f arr = run1 $ unsafeMArray1 n >>= trM arr n f
+
+||| Specialized version of traversing an array over the `Either` applicatice.
+|||
+||| Stack-safe and faster than vanilla `traverse`.
+export %inline
+itraverseEither : {n : _} -> (a -> Either e b) -> IArray n a -> Either e (IArray n b)
+itraverseEither f arr = run1 $ unsafeMArray1 n >>= trE arr n f
+
 ||| Runs a linear effect over the values plus their indices in an array.
 export
 traverseKV1_ : {n : _} -> (Fin n -> a -> F1' q) -> IArray n a -> F1' q
@@ -504,3 +532,17 @@ Foldable1 Array where
 export %inline
 Traversable1 Array where
   traverse1 f (A n arr) t = let a # t := traverse1 f arr t in A n a # t
+
+||| Specialized version of traversing an array over the `Maybe` applicatice.
+|||
+||| Stack-safe and faster than vanilla `traverse`.
+export %inline
+traverseMaybe : (a -> Maybe b) -> Array a -> Maybe (Array b)
+traverseMaybe f (A n arr) = A n <$> itraverseMaybe f arr
+
+||| Specialized version of traversing an array over the `Either` applicatice.
+|||
+||| Stack-safe and faster than vanilla `traverse`.
+export %inline
+traverseEither : (a -> Either e b) -> Array a -> Either e (Array b)
+traverseEither f (A n arr) = A n <$> itraverseEither f arr
