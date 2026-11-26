@@ -310,6 +310,18 @@ prop_casmodify =
     [x,y] <- forAll $ hlist [anyBits8, anyBits8]
     (x+y) === alloc 3 x (\r,t => let _ # t := casmodify r 2 (+y) t in get r 2 t)
 
+prop_traverseMaybe : Property
+prop_traverseMaybe =
+  property $ do
+    arr <- forAll $ arrayOf anyBits8
+    traverseMaybe Just arr === Just arr
+
+prop_traverseEither : Property
+prop_traverseEither =
+  property $ do
+    arr <- forAll $ arrayOf anyBits8
+    traverseEither {e = ()} Right arr === Right arr
+
 export
 props : Group
 props = MkGroup "Array"
@@ -358,5 +370,6 @@ props = MkGroup "Array"
   , ("prop_casswap", prop_casswap)
   , ("prop_casupdate", prop_casupdate)
   , ("prop_casmodify", prop_casmodify)
+  , ("prop_traverseMaybe", prop_traverseMaybe)
+  , ("prop_traverseEither", prop_traverseEither)
   ]
-
